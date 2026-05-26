@@ -9,4 +9,31 @@
 
 #![deny(unsafe_code)]
 
+pub(crate) mod parse;
 pub mod decimal64;
+pub use decimal64::Decimal64;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParseError {
+    Empty,
+    InvalidChar { byte: u8, pos: usize },
+    Overflow,
+    TooManyFractional { got: u32, max: u32 },
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::Empty => write!(f, "empty or missing digits"),
+            ParseError::InvalidChar { byte, pos } => {
+                write!(f, "invalid character {:?} at position {}", *byte as char, pos)
+            }
+            ParseError::Overflow => write!(f, "value overflows i64"),
+            ParseError::TooManyFractional { got, max } => {
+                write!(f, "too many fractional digits: got {}, max {}", got, max)
+            }
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
