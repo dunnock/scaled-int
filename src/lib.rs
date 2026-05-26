@@ -13,6 +13,15 @@ pub(crate) mod parse;
 pub mod decimal64;
 pub use decimal64::Decimal64;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Round {
+    NearestEven,
+    Nearest,
+    TruncateTowardZero,
+    TowardPosInf,
+    TowardNegInf,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     Empty,
