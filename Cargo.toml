@@ -1,0 +1,13 @@
+[package]
+name = "decimal64"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "decimal64"
+path = "src/lib.rs"
+
+[dev-dependencies]
+criterion = "0.8.2"
+rust_decimal = "1.42.0"
+bigdecimal = "0.4.10"
