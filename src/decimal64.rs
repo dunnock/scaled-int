@@ -35,6 +35,12 @@ impl<const S: u32> Decimal64<S> {
 }
 
 impl<const S: u32> Decimal64<S> {
+    pub fn parse(s: &str) -> Result<Self, crate::ParseError> {
+        crate::parse::parse::<S>(s)
+    }
+}
+
+impl<const S: u32> Decimal64<S> {
     #[inline]
     pub fn from_f64(x: f64) -> Self {
         Self::from_f64_round(x, crate::Round::NearestEven)
