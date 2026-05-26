@@ -13,22 +13,41 @@ const fn const_pow10(s: u32) -> i64 {
     result
 }
 
+/// Fixed-scale 64-bit signed decimal.
+///
+/// The raw value is an `i64` whose unit is `10^(-S)`.
+/// Scale `S` is a compile-time const; no runtime overhead.
+///
+/// # Representation
+///
+/// `"1.23"` at scale 2 is stored as `123i64`; `"1.2345"` at scale 4 is `12345i64`.
+///
+/// # Scale limit
+///
+/// `S` must be ≤ 18; larger values overflow `ONE = 10^S` and are rejected at compile time.
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Decimal64<const S: u32>(i64);
 
 impl<const S: u32> Decimal64<S> {
+    /// The scale parameter `S`.
     pub const SCALE: u32 = S;
+    /// Additive identity: `0`.
     pub const ZERO: Self = Self(0);
+    /// Multiplicative identity: `1.0` stored as `10^S`.
     pub const ONE: Self = Self(const_pow10(S));
+    /// Largest representable value (`i64::MAX` raw).
     pub const MAX: Self = Self(i64::MAX);
+    /// Smallest representable value (`i64::MIN` raw).
     pub const MIN: Self = Self(i64::MIN);
 
+    /// Wrap a raw `i64` without any scaling — caller manages the invariant.
     #[inline(always)]
     pub const fn from_raw(raw: i64) -> Self {
         Self(raw)
     }
 
+    /// Return the raw `i64` storage value (the mathematical value × `10^S`).
     #[inline(always)]
     pub const fn raw(self) -> i64 {
         self.0
@@ -36,17 +55,26 @@ impl<const S: u32> Decimal64<S> {
 }
 
 impl<const S: u32> Decimal64<S> {
+    /// Parse a decimal string. Extra fractional digits beyond `S` are silently truncated.
+    ///
+    /// Equivalent to `s.parse::<Decimal64<S>>()`.
     pub fn parse(s: &str) -> Result<Self, crate::ParseError> {
         crate::parse::parse::<S>(s)
     }
 }
 
 impl<const S: u32> Decimal64<S> {
+    /// Convert from `f64` using `Round::NearestEven` (banker's rounding).
+    ///
+    /// `NaN` maps to `ZERO`; overflow clamps to `MAX`/`MIN`.
     #[inline]
     pub fn from_f64(x: f64) -> Self {
         Self::from_f64_round(x, crate::Round::NearestEven)
     }
 
+    /// Convert from `f64` with an explicit rounding mode.
+    ///
+    /// `NaN` maps to `ZERO`; overflow clamps to `MAX`/`MIN`.
     pub fn from_f64_round(x: f64, mode: crate::Round) -> Self {
         if x.is_nan() {
             return Self::ZERO;
@@ -65,6 +93,7 @@ impl<const S: u32> Decimal64<S> {
         Self(clamped as i64)
     }
 
+    /// Convert to `f64`. Lossless for `|raw| < 2^53`; larger values lose the last few ULPs.
     #[inline]
     pub fn to_f64(self) -> f64 {
         let scale_factor = 10f64.powi(S as i32);
@@ -149,16 +178,19 @@ impl<const S: u32> Div for Decimal64<S> {
 // ── Checked / saturating / rounding variants ──────────────────────────────────
 
 impl<const S: u32> Decimal64<S> {
+    /// Returns `None` on overflow.
     #[inline]
     pub fn checked_add(self, rhs: Self) -> Option<Self> {
         self.0.checked_add(rhs.0).map(Self)
     }
 
+    /// Returns `None` on overflow.
     #[inline]
     pub fn checked_sub(self, rhs: Self) -> Option<Self> {
         self.0.checked_sub(rhs.0).map(Self)
     }
 
+    /// Returns `None` on overflow.
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
         let product = self.0 as i128 * rhs.0 as i128;
         let scale = const_pow10(S) as i128;
@@ -170,6 +202,7 @@ impl<const S: u32> Decimal64<S> {
         }
     }
 
+    /// Returns `None` on division by zero or overflow.
     pub fn checked_div(self, rhs: Self) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
@@ -183,16 +216,19 @@ impl<const S: u32> Decimal64<S> {
         }
     }
 
+    /// Clamps to `MAX`/`MIN` on overflow instead of panicking.
     #[inline]
     pub fn saturating_add(self, rhs: Self) -> Self {
         Self(self.0.saturating_add(rhs.0))
     }
 
+    /// Clamps to `MAX`/`MIN` on overflow instead of panicking.
     #[inline]
     pub fn saturating_sub(self, rhs: Self) -> Self {
         Self(self.0.saturating_sub(rhs.0))
     }
 
+    /// Clamps to `MAX`/`MIN` on overflow instead of panicking.
     pub fn saturating_mul(self, rhs: Self) -> Self {
         let product = self.0 as i128 * rhs.0 as i128;
         let scale = const_pow10(S) as i128;
@@ -200,11 +236,13 @@ impl<const S: u32> Decimal64<S> {
         Self(result.clamp(i64::MIN as i128, i64::MAX as i128) as i64)
     }
 
+    /// Divide with an explicit rounding mode. Panics on division by zero or overflow.
     pub fn div_round(self, rhs: Self, mode: crate::Round) -> Self {
         self.checked_div_round(rhs, mode)
             .expect("Decimal64 div_round: division by zero or overflow")
     }
 
+    /// Divide with an explicit rounding mode. Returns `None` on division by zero or overflow.
     pub fn checked_div_round(self, rhs: Self, mode: crate::Round) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
@@ -219,6 +257,7 @@ impl<const S: u32> Decimal64<S> {
         }
     }
 
+    /// Lossless rescale. Returns `None` if fractional digits would be lost or on overflow.
     pub fn rescale_into<const OUT: u32>(self) -> Option<Decimal64<OUT>> {
         if OUT > S {
             let factor = const_pow10(OUT - S);
@@ -236,6 +275,7 @@ impl<const S: u32> Decimal64<S> {
         }
     }
 
+    /// Rescale with rounding. Returns `None` only on overflow.
     pub fn rescale_round_into<const OUT: u32>(self, mode: crate::Round) -> Option<Decimal64<OUT>> {
         if OUT > S {
             let factor = const_pow10(OUT - S);
