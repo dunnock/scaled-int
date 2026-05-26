@@ -11,3 +11,11 @@ path = "src/lib.rs"
 criterion = "0.8.2"
 rust_decimal = "1.42.0"
 bigdecimal = "0.4.10"
+
+[[bench]]
+name = "parse"
+harness = false
+
+[[bench]]
+name = "arithmetic"
+harness = false
