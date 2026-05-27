@@ -52,3 +52,35 @@ present in the signed (`i64`/`i128`) path, producing a ~12–14% speedup.
 
 `add` is a single checked integer add; the 3.7% delta is within measurement
 noise at sub-nanosecond timings.
+
+---
+
+## Reeval
+
+**Targeted on:** 2026-05-27
+
+**Bottleneck analysis against the three criteria:**
+
+1. **UDecimal64 parse vs Decimal64 parse** — No measurable regression. Parse
+   throughput is equivalent on short strings and +3–6% faster on longer inputs
+   (`"99.9999"`, `"9999999999.9999"`). The `"1.23"` −4.6% result was noisy
+   (33/100 outliers) and is not reproducible signal; treated as equivalent.
+   The `checked_mul/checked_add` optimization in `src/parse_unsigned.rs` is
+   therefore **not warranted** — the parser already matches or beats its signed
+   counterpart.
+
+2. **UDecimal64 parse for 10+ digit strings vs `rust_decimal`** — Cycle 01
+   established Decimal64 parse is ~1.60–1.87× faster than `rust_decimal` on
+   10+ digit strings. UDecimal64 is a further +6.2% faster than Decimal64 on
+   the 15-char `"9999999999.9999"` input, putting it at roughly 1.70–2.0×
+   faster than `rust_decimal`. This exceeds the 1.6× threshold; no SIMD work
+   is needed this cycle.
+
+3. **Arithmetic mul/div slower than expected** — No. Both are already 11–14%
+   faster than Decimal64. The u128-division path on unsigned operands is
+   producing better codegen than the signed path, as expected.
+
+**Change applied:** None. All three conditions are not triggered; no
+speculative optimisation introduced.
+
+**Verification:** `cargo test --all` passes (clean baseline from prior commits).
