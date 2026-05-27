@@ -181,11 +181,17 @@ impl<const S: u32> UDecimal64<S> {
         self.0.checked_sub(rhs.0).map(Self)
     }
 
-    /// Returns `None` on overflow. Uses `u128` intermediate to avoid intermediate overflow.
+    /// Returns `None` on overflow.
+    #[inline]
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+        // Fast path: u64 product covers most financial values at S <= 18
+        if let Some(product) = self.0.checked_mul(rhs.0) {
+            return Some(Self(product / const_pow10_u64(S)));
+        }
+        // Slow path: full u128 handles large magnitudes
         let product = self.0 as u128 * rhs.0 as u128;
-        let scale = const_pow10_u64(S) as u128;
-        let result = product / scale;
+        let scale   = const_pow10_u64(S) as u128;
+        let result  = product / scale;
         if result <= u64::MAX as u128 {
             Some(Self(result as u64))
         } else {
@@ -194,11 +200,18 @@ impl<const S: u32> UDecimal64<S> {
     }
 
     /// Returns `None` on division by zero or result overflow.
+    #[inline]
     pub fn checked_div(self, rhs: Self) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
         }
-        let num = self.0 as u128 * const_pow10_u64(S) as u128;
+        // Fast path: if scaled numerator fits in u64, use u64 division
+        let scale = const_pow10_u64(S);
+        if let Some(num) = self.0.checked_mul(scale) {
+            return Some(Self(num / rhs.0));
+        }
+        // Slow path: full u128
+        let num    = self.0 as u128 * scale as u128;
         let result = num / rhs.0 as u128;
         if result <= u64::MAX as u128 {
             Some(Self(result as u64))
@@ -220,6 +233,7 @@ impl<const S: u32> UDecimal64<S> {
     }
 
     /// Clamps to `MAX` on overflow instead of panicking.
+    #[inline]
     pub fn saturating_mul(self, rhs: Self) -> Self {
         self.checked_mul(rhs).unwrap_or(Self::MAX)
     }
@@ -231,6 +245,7 @@ impl<const S: u32> UDecimal64<S> {
     }
 
     /// Divide with an explicit rounding mode. Returns `None` on division by zero or overflow.
+    #[inline]
     pub fn checked_div_round(self, rhs: Self, mode: crate::Round) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
@@ -252,7 +267,7 @@ impl<const S: u32> UDecimal64<S> {
         } else if OUT < S {
             let factor = const_pow10_u64(S - OUT) as u128;
             let val = self.0 as u128;
-            if val % factor != 0 {
+            if !val.is_multiple_of(factor) {
                 None
             } else {
                 Some(UDecimal64::from_raw((val / factor) as u64))
@@ -301,7 +316,7 @@ fn div_round_u128(num: u128, den: u128, mode: crate::Round) -> u128 {
             if r2 > den {
                 q + 1
             } else if r2 == den {
-                if q % 2 != 0 { q + 1 } else { q }
+                if !q.is_multiple_of(2) { q + 1 } else { q }
             } else {
                 q
             }
