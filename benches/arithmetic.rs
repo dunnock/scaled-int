@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use decimal64::Decimal64;
+use decimal64::{Decimal64, UDecimal64};
 use std::hint::black_box;
 
 const LHS_RAW: i64 = 1_234_567; // 123.4567 at scale 4
@@ -11,8 +11,15 @@ fn bench_arithmetic(c: &mut Criterion) {
     let lhs = Decimal64::<4>::from_raw(LHS_RAW);
     let rhs = Decimal64::<4>::from_raw(RHS_RAW);
 
+    let ulhs = UDecimal64::<4>::from_raw(LHS_RAW as u64);
+    let urhs = UDecimal64::<4>::from_raw(RHS_RAW as u64);
+
     group.bench_function("decimal64_add", |b| {
         b.iter(|| black_box(lhs) + black_box(rhs))
+    });
+
+    group.bench_function("udecimal64_add", |b| {
+        b.iter(|| black_box(ulhs) + black_box(urhs))
     });
 
     group.bench_function("i64_add", |b| {
@@ -23,8 +30,16 @@ fn bench_arithmetic(c: &mut Criterion) {
         b.iter(|| black_box(lhs) * black_box(rhs))
     });
 
+    group.bench_function("udecimal64_mul", |b| {
+        b.iter(|| black_box(ulhs) * black_box(urhs))
+    });
+
     group.bench_function("decimal64_div", |b| {
         b.iter(|| black_box(lhs) / black_box(rhs))
+    });
+
+    group.bench_function("udecimal64_div", |b| {
+        b.iter(|| black_box(ulhs) / black_box(urhs))
     });
 
     group.finish();

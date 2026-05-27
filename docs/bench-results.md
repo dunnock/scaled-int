@@ -84,3 +84,15 @@ Both use i128 arithmetic. Division here divides a scaled i128 by an i64-range va
 ## Escalation
 
 The rust_decimal 2× target is missed for inputs ≥ 8 characters. Per the task directive, no optimisation is done here — this is flagged for cycle 02.
+
+---
+
+## Cycle 02 Addendum — 2026-05-27
+
+Cycle 02 delivered `UDecimal64<const SCALE: u32>`, an unsigned fixed-point
+decimal backed by `u64`. Full results: `docs/udecimal64-bench-results.md`.
+
+**Summary:** UDecimal64 parse is 2.4–6.9% faster than Decimal64 on 4 of 5
+benchmark strings (equivalent on `"1.23"`); arithmetic `mul`/`div` are 11–12%
+faster due to unsigned `u128` codegen avoiding signed-operand overhead. All
+cycle 02 acceptance criteria met.
