@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
+#[inline(always)]
 const fn const_pow10(s: u32) -> i64 {
     assert!(s <= 18, "Decimal64 scale must be <= 18");
     let mut result: i64 = 1;
@@ -191,10 +192,16 @@ impl<const S: u32> Decimal64<S> {
     }
 
     /// Returns `None` on overflow.
+    #[inline(always)]
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+        // Fast path: i64 product covers most financial values at S <= 18
+        if let Some(product) = self.0.checked_mul(rhs.0) {
+            return Some(Self(product / const_pow10(S)));
+        }
+        // Slow path: full i128 handles large magnitudes and i64::MIN × -1
         let product = self.0 as i128 * rhs.0 as i128;
-        let scale = const_pow10(S) as i128;
-        let result = product / scale;
+        let scale   = const_pow10(S) as i128;
+        let result  = product / scale;
         if result >= i64::MIN as i128 && result <= i64::MAX as i128 {
             Some(Self(result as i64))
         } else {
@@ -203,11 +210,18 @@ impl<const S: u32> Decimal64<S> {
     }
 
     /// Returns `None` on division by zero or overflow.
+    #[inline(always)]
     pub fn checked_div(self, rhs: Self) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
         }
-        let num = self.0 as i128 * const_pow10(S) as i128;
+        // Fast path: if scaled numerator fits in i64, use i64 division
+        let scale = const_pow10(S);
+        if let Some(num) = self.0.checked_mul(scale) {
+            return Some(Self(num / rhs.0));
+        }
+        // Slow path: full i128
+        let num    = self.0 as i128 * scale as i128;
         let result = num / rhs.0 as i128;
         if result >= i64::MIN as i128 && result <= i64::MAX as i128 {
             Some(Self(result as i64))
@@ -229,10 +243,16 @@ impl<const S: u32> Decimal64<S> {
     }
 
     /// Clamps to `MAX`/`MIN` on overflow instead of panicking.
+    #[inline]
     pub fn saturating_mul(self, rhs: Self) -> Self {
+        // Fast path: i64 product covers most financial values at S <= 18
+        if let Some(product) = self.0.checked_mul(rhs.0) {
+            return Self(product / const_pow10(S));
+        }
+        // Slow path: full i128 with clamp
         let product = self.0 as i128 * rhs.0 as i128;
-        let scale = const_pow10(S) as i128;
-        let result = product / scale;
+        let scale   = const_pow10(S) as i128;
+        let result  = product / scale;
         Self(result.clamp(i64::MIN as i128, i64::MAX as i128) as i64)
     }
 
@@ -243,6 +263,7 @@ impl<const S: u32> Decimal64<S> {
     }
 
     /// Divide with an explicit rounding mode. Returns `None` on division by zero or overflow.
+    #[inline]
     pub fn checked_div_round(self, rhs: Self, mode: crate::Round) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
