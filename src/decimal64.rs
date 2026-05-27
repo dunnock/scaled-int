@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
+#[inline(always)]
 const fn const_pow10(s: u32) -> i64 {
     assert!(s <= 18, "Decimal64 scale must be <= 18");
     let mut result: i64 = 1;
@@ -191,7 +192,7 @@ impl<const S: u32> Decimal64<S> {
     }
 
     /// Returns `None` on overflow.
-    #[inline]
+    #[inline(always)]
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
         // Fast path: i64 product covers most financial values at S <= 18
         if let Some(product) = self.0.checked_mul(rhs.0) {
@@ -209,7 +210,7 @@ impl<const S: u32> Decimal64<S> {
     }
 
     /// Returns `None` on division by zero or overflow.
-    #[inline]
+    #[inline(always)]
     pub fn checked_div(self, rhs: Self) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
