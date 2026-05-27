@@ -24,8 +24,10 @@ pub(crate) mod parse;
 pub(crate) mod parse_unsigned;
 pub mod decimal64;
 pub mod udecimal64;
+pub mod scientific;
 pub use decimal64::Decimal64;
 pub use udecimal64::UDecimal64;
+pub use scientific::Scientific;
 
 /// Rounding mode for `from_f64_round`, `div_round`, and `rescale_round_into`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,7 +44,8 @@ pub enum Round {
     TowardNegInf,
 }
 
-/// Errors returned by [`Decimal64::parse`] and the [`FromStr`](std::str::FromStr) impl.
+/// Errors returned by [`Decimal64::parse`], [`Scientific`], and the
+/// [`FromStr`](std::str::FromStr) impls.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     /// Input was empty, or contained only a sign or a bare dot.
@@ -51,6 +54,9 @@ pub enum ParseError {
     InvalidChar { byte: u8, pos: usize },
     /// The accumulated value exceeded `i64` range for this scale.
     Overflow,
+    /// Nonzero value combined with a negative exponent so extreme that no
+    /// representable non-zero value exists (returned by [`Scientific`] parsing).
+    Underflow,
     /// Reserved for a future strict-mode parse; currently unused (extra digits are truncated).
     TooManyFractional { got: u32, max: u32 },
 }
@@ -63,6 +69,9 @@ impl std::fmt::Display for ParseError {
                 write!(f, "invalid character {:?} at position {}", *byte as char, pos)
             }
             ParseError::Overflow => write!(f, "numeric overflow"),
+            ParseError::Underflow => {
+                write!(f, "value too small to represent (underflow)")
+            }
             ParseError::TooManyFractional { got, max } => {
                 write!(f, "too many fractional digits: got {}, max {}", got, max)
             }
