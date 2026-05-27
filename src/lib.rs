@@ -21,8 +21,11 @@
 #![deny(unsafe_code)]
 
 pub(crate) mod parse;
+pub(crate) mod parse_unsigned;
 pub mod decimal64;
+pub mod udecimal64;
 pub use decimal64::Decimal64;
+pub use udecimal64::UDecimal64;
 
 /// Rounding mode for `from_f64_round`, `div_round`, and `rescale_round_into`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,7 +62,7 @@ impl std::fmt::Display for ParseError {
             ParseError::InvalidChar { byte, pos } => {
                 write!(f, "invalid character {:?} at position {}", *byte as char, pos)
             }
-            ParseError::Overflow => write!(f, "value overflows i64"),
+            ParseError::Overflow => write!(f, "numeric overflow"),
             ParseError::TooManyFractional { got, max } => {
                 write!(f, "too many fractional digits: got {}, max {}", got, max)
             }
