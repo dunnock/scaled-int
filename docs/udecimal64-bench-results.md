@@ -84,3 +84,56 @@ noise at sub-nanosecond timings.
 speculative optimisation introduced.
 
 **Verification:** `cargo test --all` passes (clean baseline from prior commits).
+
+---
+
+## Final Results — 2026-05-27
+
+Re-run after reeval analysis. No code changes were applied (reeval concluded no
+optimisation was warranted); this run confirms the baseline is stable.
+
+`CARGO_TARGET_DIR=/work/cargo-target-ralph cargo bench`
+
+### Parse latency (ns) — final
+
+| Input               | Decimal64 (ns) | UDecimal64 (ns) | Delta (U vs D) |
+|---------------------|---------------:|----------------:|----------------|
+| `"0"`               | 4.737          | 4.489           | **−5.2%**      |
+| `"1.23"`            | 5.334          | 5.333           | equivalent     |
+| `"123.4567"`        | 6.479          | 6.321           | **−2.4%**      |
+| `"9999999999.9999"` | 9.013          | 8.393           | **−6.9%**      |
+| `"99.9999"`         | 6.111          | 5.967           | **−2.4%**      |
+
+### Parse throughput (M/s) — final
+
+| Input               | Decimal64 | UDecimal64 | vs Cycle 01 D64 | Notes                    |
+|---------------------|----------:|-----------:|-----------------|--------------------------|
+| `"0"`               | 211.1     | 222.8      | +3.9%           | UDecimal64 clearly ahead |
+| `"1.23"`            | 187.5     | 187.6      | −1.9%           | equivalent; prior noise gone |
+| `"123.4567"`        | 154.3     | 158.2      | +1.5%           |                          |
+| `"9999999999.9999"` | 110.9     | 119.2      | +0.8%           | +7.5% vs same-run D64    |
+| `"99.9999"`         | 163.6     | 167.6      | n/a             | new string vs cycle 01   |
+
+*Cycle 01 Decimal64 baseline: 214.6 / 191.2 / 155.8 / 118.2 M/s (no "99.9999" entry).*
+
+### Arithmetic latency (ns) — final
+
+| Operation | Decimal64 (ns) | UDecimal64 (ns) | Delta (U vs D) | Target met?            |
+|-----------|---------------:|----------------:|----------------|------------------------|
+| add       | 0.339          | 0.363           | +7% (noise)    | YES — 0.363 ns ≤ 2 ns  |
+| mul       | 4.398          | 3.883           | **−11.7%**     | YES — 3.883 ns ≤ 5 ns  |
+| div       | 4.474          | 3.971           | **−11.2%**     | YES — 3.971 ns ≤ 6 ns  |
+
+`add` difference (0.339 vs 0.363 ps) is well within sub-nanosecond measurement noise; both
+are single-instruction operations and the 7% delta is not reproducible signal.
+
+### Cycle 02 acceptance criteria
+
+| Criterion                                        | Result  |
+|--------------------------------------------------|---------|
+| UDecimal64 parse faster than Decimal64 on positive inputs (or within noise) | **PASS** — 2.4–6.9% faster on 4/5 inputs; equivalent on `"1.23"` |
+| UDecimal64 add ≤ 2 ns                           | **PASS** — 0.363 ns |
+| UDecimal64 mul ≤ 5 ns                           | **PASS** — 3.883 ns |
+| UDecimal64 div ≤ 6 ns                           | **PASS** — 3.971 ns |
+
+All cycle 02 acceptance criteria met.
