@@ -70,6 +70,8 @@ pub(crate) fn parse<const S: u32>(s: &str) -> Result<Decimal64<S>, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     #[test]
     fn parse_zero() {

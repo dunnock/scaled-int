@@ -18,7 +18,11 @@
 //! See `docs/design.md` for the full design rationale, API surface, and
 //! arithmetic rules.
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 pub(crate) mod parse;
 pub(crate) mod parse_unsigned;
@@ -66,8 +70,8 @@ pub enum ParseError {
     TooManyFractional { got: u32, max: u32 },
 }
 
-impl std::fmt::Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ParseError::Empty => write!(f, "empty or missing digits"),
             ParseError::InvalidChar { byte, pos } => {
@@ -84,4 +88,5 @@ impl std::fmt::Display for ParseError {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for ParseError {}

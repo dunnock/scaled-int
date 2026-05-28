@@ -1,5 +1,8 @@
-use std::fmt;
-use std::str::FromStr;
+#[cfg(any(feature = "std", feature = "alloc"))]
+use core::fmt;
+use core::str::FromStr;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::string::ToString;
 
 use crate::decimal64::Decimal64;
 use crate::udecimal64::UDecimal64;
@@ -219,6 +222,7 @@ impl<const S: u32> FromStr for Scientific<UDecimal64<S>> {
 /// Emits normalized scientific notation: one significant digit before the decimal
 /// point, trailing zeros in the fractional coefficient stripped, lowercase `e`.
 /// Zero displays as `0e0`.
+#[cfg(any(feature = "std", feature = "alloc"))]
 fn fmt_scientific_u64(
     abs_raw: u64,
     scale: u32,
@@ -245,6 +249,7 @@ fn fmt_scientific_u64(
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<const S: u32> fmt::Display for Scientific<Decimal64<S>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let raw = self.0.raw();
@@ -255,6 +260,7 @@ impl<const S: u32> fmt::Display for Scientific<Decimal64<S>> {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<const S: u32> fmt::Display for Scientific<UDecimal64<S>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let raw = self.0.raw();
@@ -270,6 +276,8 @@ impl<const S: u32> fmt::Display for Scientific<UDecimal64<S>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     type S4 = Scientific<Decimal64<4>>;
     type U4 = Scientific<UDecimal64<4>>;

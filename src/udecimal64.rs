@@ -1,6 +1,6 @@
-use std::fmt;
-use std::ops::{Add, Div, Mul, Sub};
-use std::str::FromStr;
+use core::fmt;
+use core::ops::{Add, Div, Mul, Sub};
+use core::str::FromStr;
 
 #[inline(always)]
 const fn const_pow10_u64(s: u32) -> u64 {
@@ -72,6 +72,7 @@ impl<const S: u32> UDecimal64<S> {
     /// Convert from `f64` using `Round::NearestEven` (banker's rounding).
     ///
     /// `NaN` and negative inputs map to `ZERO`; overflow clamps to `MAX`.
+    #[cfg(feature = "std")]
     #[inline]
     pub fn from_f64(x: f64) -> Self {
         Self::from_f64_round(x, crate::Round::NearestEven)
@@ -80,6 +81,7 @@ impl<const S: u32> UDecimal64<S> {
     /// Convert from `f64` with an explicit rounding mode.
     ///
     /// `NaN` and negative inputs map to `ZERO`; overflow clamps to `MAX`.
+    #[cfg(feature = "std")]
     pub fn from_f64_round(x: f64, mode: crate::Round) -> Self {
         if x.is_nan() || x < 0.0 {
             return Self::ZERO;
@@ -351,6 +353,10 @@ impl<const S: u32> fmt::Debug for UDecimal64<S> {
 mod tests {
     use super::*;
     use crate::{Decimal64, ParseError, Round};
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
+    #[cfg(not(feature = "std"))]
+    use alloc::format;
 
     // ── Constants ────────────────────────────────────────────────────────────
 
@@ -490,26 +496,31 @@ mod tests {
 
     // ── f64 conversions ──────────────────────────────────────────────────────
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_nan_is_zero() {
         assert_eq!(UDecimal64::<2>::from_f64(f64::NAN).raw(), 0);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_negative_is_zero() {
         assert_eq!(UDecimal64::<2>::from_f64(-1.5).raw(), 0);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_negative_zero_is_zero() {
         assert_eq!(UDecimal64::<2>::from_f64(-0.0).raw(), 0);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_infinity_clamps_to_max() {
         assert_eq!(UDecimal64::<2>::from_f64(f64::INFINITY).raw(), u64::MAX);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_basic() {
         assert_eq!(UDecimal64::<4>::from_f64(1.2345).raw(), 12345);
@@ -520,6 +531,7 @@ mod tests {
         assert_eq!(UDecimal64::<4>(12345).to_f64(), 1.2345_f64);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn f64_round_trip() {
         let mut seed: u64 = 12345678901234567;
