@@ -1,0 +1,12 @@
+{
+  "task": "no-std-final-benchmark",
+  "status": "active",
+  "depends_on": ["no-std-reeval-and-improve"],
+  "items": [
+    { "id": "check-reeval-changes", "description": "Determine if reeval made source changes", "done": false },
+    { "id": "run-final-bench", "description": "Run cargo bench (or confirm existing results are final)", "done": false },
+    { "id": "write-final-doc", "description": "Write docs/no-std-final-bench.md with final table + verdict", "done": false },
+    { "id": "update-cycle-status", "description": "Update cycles/07-no-std/cycle.md status to complete", "done": false },
+    { "id": "commit", "description": "Commit docs/no-std-final-bench.md and updated cycle.md", "done": false }
+  ]
+}
