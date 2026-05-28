@@ -27,6 +27,20 @@ impl<const S: u32> Scientific<UDecimal64<S>> {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
+/// Locate the first `e` or `E` byte using an OR-mask trick: both bytes satisfy
+/// `b | 0x20 == b'e'` (0x65), so a single comparison covers both cases.
+/// This form is more amenable to LLVM auto-vectorization than a two-equality closure.
+#[inline(always)]
+fn find_exp_marker(bytes: &[u8]) -> Option<usize> {
+    for (i, &b) in bytes.iter().enumerate() {
+        if b | 0x20 == b'e' {
+            return Some(i);
+        }
+    }
+    None
+}
+
+#[inline(always)]
 fn pow10_i64(exp: u32) -> i64 {
     const TABLE: [i64; 19] = [
         1,
@@ -52,6 +66,7 @@ fn pow10_i64(exp: u32) -> i64 {
     TABLE[exp as usize]
 }
 
+#[inline(always)]
 fn pow10_u64(exp: u32) -> u64 {
     const TABLE: [u64; 20] = [
         1,
@@ -79,6 +94,7 @@ fn pow10_u64(exp: u32) -> u64 {
 }
 
 /// Parse the substring after the `e`/`E` marker into a signed exponent.
+#[inline(always)]
 fn parse_exponent(s: &str) -> Result<i32, ParseError> {
     let bytes = s.as_bytes();
     if bytes.is_empty() {
@@ -106,6 +122,7 @@ fn parse_exponent(s: &str) -> Result<i32, ParseError> {
     Ok(if negative { -acc } else { acc })
 }
 
+#[inline(always)]
 fn apply_exponent_i64(raw: i64, exponent: i32) -> Result<i64, ParseError> {
     if exponent > 0 {
         apply_positive_exp_i64(raw, exponent as u32)
@@ -116,6 +133,7 @@ fn apply_exponent_i64(raw: i64, exponent: i32) -> Result<i64, ParseError> {
     }
 }
 
+#[inline(always)]
 fn apply_positive_exp_i64(raw: i64, exp: u32) -> Result<i64, ParseError> {
     if exp > 18 {
         return if raw == 0 { Ok(0) } else { Err(ParseError::Overflow) };
@@ -123,6 +141,7 @@ fn apply_positive_exp_i64(raw: i64, exp: u32) -> Result<i64, ParseError> {
     raw.checked_mul(pow10_i64(exp)).ok_or(ParseError::Overflow)
 }
 
+#[inline(always)]
 fn apply_negative_exp_i64(raw: i64, neg_exp: u32) -> Result<i64, ParseError> {
     if neg_exp > 18 {
         return if raw == 0 { Ok(0) } else { Err(ParseError::Underflow) };
@@ -130,6 +149,7 @@ fn apply_negative_exp_i64(raw: i64, neg_exp: u32) -> Result<i64, ParseError> {
     Ok(raw / pow10_i64(neg_exp))
 }
 
+#[inline(always)]
 fn apply_exponent_u64(raw: u64, exponent: i32) -> Result<u64, ParseError> {
     if exponent > 0 {
         apply_positive_exp_u64(raw, exponent as u32)
@@ -140,6 +160,7 @@ fn apply_exponent_u64(raw: u64, exponent: i32) -> Result<u64, ParseError> {
     }
 }
 
+#[inline(always)]
 fn apply_positive_exp_u64(raw: u64, exp: u32) -> Result<u64, ParseError> {
     if exp > 19 {
         return if raw == 0 { Ok(0) } else { Err(ParseError::Overflow) };
@@ -147,6 +168,7 @@ fn apply_positive_exp_u64(raw: u64, exp: u32) -> Result<u64, ParseError> {
     raw.checked_mul(pow10_u64(exp)).ok_or(ParseError::Overflow)
 }
 
+#[inline(always)]
 fn apply_negative_exp_u64(raw: u64, neg_exp: u32) -> Result<u64, ParseError> {
     if neg_exp > 19 {
         return if raw == 0 { Ok(0) } else { Err(ParseError::Underflow) };
@@ -161,7 +183,7 @@ impl<const S: u32> FromStr for Scientific<Decimal64<S>> {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = s.as_bytes();
-        match bytes.iter().position(|&b| b == b'e' || b == b'E') {
+        match find_exp_marker(bytes) {
             None => Ok(Scientific(crate::parse::parse::<S>(s)?)),
             Some(pos) => {
                 let mantissa_raw = crate::parse::parse::<S>(&s[..pos])?.raw();
@@ -178,7 +200,7 @@ impl<const S: u32> FromStr for Scientific<UDecimal64<S>> {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = s.as_bytes();
-        match bytes.iter().position(|&b| b == b'e' || b == b'E') {
+        match find_exp_marker(bytes) {
             None => Ok(Scientific(crate::parse_unsigned::parse::<S>(s)?)),
             Some(pos) => {
                 let mantissa_raw = crate::parse_unsigned::parse::<S>(&s[..pos])?.raw();
