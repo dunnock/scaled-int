@@ -1,0 +1,14 @@
+{
+  "task": "no-std-reeval-and-improve",
+  "status": "active",
+  "depends_on": ["no-std-benchmark-and-profile"],
+  "items": [
+    { "id": "read-bench-results", "description": "Read docs/no-std-bench-results.md verdict", "done": false },
+    { "id": "check-regression", "description": "Determine if any benchmark exceeded 5% regression threshold", "done": false },
+    { "id": "diagnose-if-needed", "description": "Diagnose root cause if regression found", "done": false },
+    { "id": "fix-if-needed", "description": "Apply targeted fix if regression found", "done": false },
+    { "id": "verify-fix", "description": "Re-run affected benchmark to confirm improvement (if fix applied)", "done": false },
+    { "id": "write-reeval-doc", "description": "Write docs/no-std-reeval.md with verdict + details", "done": false },
+    { "id": "commit", "description": "Commit docs/no-std-reeval.md (and any code fixes)", "done": false }
+  ]
+}

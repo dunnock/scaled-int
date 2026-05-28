@@ -1,0 +1,21 @@
+{
+  "task": "no-std-implement",
+  "status": "active",
+  "depends_on": ["no-std-design-and-plan"],
+  "items": [
+    { "id": "read-design-doc", "description": "Read docs/no-std-design.md §8 in full", "done": false },
+    { "id": "update-cargo-toml", "description": "Update [features] and serde dep in Cargo.toml", "done": false },
+    { "id": "update-lib-rs", "description": "Add cfg_attr(no_std), extern crate alloc, fix Error gate", "done": false },
+    { "id": "update-decimal64-rs", "description": "Change std:: use lines to core:: in decimal64.rs", "done": false },
+    { "id": "update-udecimal64-rs", "description": "Change std:: use lines to core:: in udecimal64.rs", "done": false },
+    { "id": "update-scientific-rs", "description": "Change std:: use lines + gate Display on alloc in scientific.rs", "done": false },
+    { "id": "update-serde-impls-rs", "description": "Replace std::fmt::Formatter with core::fmt::Formatter in serde_impls.rs", "done": false },
+    { "id": "verify-default-build", "description": "cargo build succeeds (default features)", "done": false },
+    { "id": "verify-no-std-build", "description": "cargo build --no-default-features succeeds", "done": false },
+    { "id": "verify-alloc-build", "description": "cargo build --no-default-features --features alloc succeeds", "done": false },
+    { "id": "verify-alloc-serde-build", "description": "cargo build --no-default-features --features alloc,serde succeeds", "done": false },
+    { "id": "verify-tests", "description": "cargo test passes", "done": false },
+    { "id": "verify-no-std-tests", "description": "cargo test --no-default-features --features alloc passes", "done": false },
+    { "id": "commit", "description": "Commit all source changes", "done": false }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "task": "no-std-design-and-plan",
+  "status": "done",
+  "items": [
+    { "id": "audit-std-imports", "description": "Audit all std:: imports in src/", "done": true },
+    { "id": "audit-alloc-deps", "description": "Identify alloc-dependent APIs (to_string, etc.)", "done": true },
+    { "id": "feature-flag-design", "description": "Design std/alloc/serde feature flag matrix", "done": true },
+    { "id": "f64-compat", "description": "Verify f64 intrinsics available in core", "done": true },
+    { "id": "write-design-doc", "description": "Write docs/no-std-design.md (>=2 pages)", "done": true },
+    { "id": "create-cycle-md", "description": "Create cycles/07-no-std/cycle.md with member list", "done": true },
+    { "id": "create-implement-task", "description": "Create no-std-implement task dir", "done": true },
+    { "id": "create-bench-task", "description": "Create no-std-benchmark-and-profile task dir", "done": true },
+    { "id": "create-reeval-task", "description": "Create no-std-reeval-and-improve task dir", "done": true },
+    { "id": "create-final-bench-task", "description": "Create no-std-final-benchmark task dir", "done": true },
+    { "id": "commit", "description": "Commit all files", "done": true }
+  ]
+}

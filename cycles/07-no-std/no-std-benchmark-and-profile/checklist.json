@@ -1,0 +1,15 @@
+{
+  "task": "no-std-benchmark-and-profile",
+  "status": "active",
+  "depends_on": ["no-std-implement"],
+  "items": [
+    { "id": "run-bench-suite", "description": "cargo bench with default features", "done": false },
+    { "id": "compare-parse", "description": "Compare parse throughput to baseline (~70 M/s)", "done": false },
+    { "id": "compare-arithmetic", "description": "Compare mul/div to baseline (0.6 ns / 2.0 ns)", "done": false },
+    { "id": "compare-scientific", "description": "Compare scientific parse to baseline (~9-13 ns)", "done": false },
+    { "id": "compare-serde", "description": "Compare serde serialize/deserialize to baseline", "done": false },
+    { "id": "write-results-doc", "description": "Write docs/no-std-bench-results.md with table + verdict", "done": false },
+    { "id": "check-regression-threshold", "description": "Confirm all benchmarks within 5% of baseline", "done": false },
+    { "id": "commit", "description": "Commit docs/no-std-bench-results.md", "done": false }
+  ]
+}
