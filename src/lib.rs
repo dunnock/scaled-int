@@ -29,6 +29,11 @@ pub use decimal64::Decimal64;
 pub use udecimal64::UDecimal64;
 pub use scientific::Scientific;
 
+#[cfg(feature = "serde")]
+pub mod serde_impls;
+#[cfg(feature = "serde")]
+pub mod serde_as;
+
 /// Rounding mode for `from_f64_round`, `div_round`, and `rescale_round_into`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Round {
