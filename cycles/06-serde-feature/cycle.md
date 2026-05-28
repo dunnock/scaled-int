@@ -1,6 +1,6 @@
 # Cycle 06 — Serde Feature
 
-**status: active**
+**status: complete**
 **branch:** 06-serde-feature
 
 ---
