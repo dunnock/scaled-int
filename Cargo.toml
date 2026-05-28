@@ -19,3 +19,7 @@ harness = false
 [[bench]]
 name = "arithmetic"
 harness = false
+
+[[bench]]
+name = "scientific"
+harness = false
