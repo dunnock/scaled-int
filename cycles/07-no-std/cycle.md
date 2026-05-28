@@ -1,6 +1,7 @@
 # Cycle 07 — no-std
 
-**status: active**
+**status: done**
+**completed_at: 2026-05-28**
 **branch:** 07-no-std
 
 ---
@@ -20,10 +21,10 @@ See `docs/no-std-design.md` for the full design rationale.
 | # | Task                                    | Status  | Notes                                                    |
 |---|-----------------------------------------|---------|----------------------------------------------------------|
 | 1 | `no-std-design-and-plan`               | done    | Produces `docs/no-std-design.md`                         |
-| 2 | `no-std-implement`                     | active  | ~29-line mechanical change; depends on (1)               |
-| 3 | `no-std-benchmark-and-profile`         | active  | Regression check; depends on (2)                         |
-| 4 | `no-std-reeval-and-improve`            | active  | Analyse, optimise if needed; depends on (3)              |
-| 5 | `no-std-final-benchmark`               | active  | Re-run, document delta; depends on (4)                   |
+| 2 | `no-std-implement`                     | done    | ~29-line mechanical change; depends on (1)               |
+| 3 | `no-std-benchmark-and-profile`         | done    | Regression check; depends on (2)                         |
+| 4 | `no-std-reeval-and-improve`            | done    | No change needed; all within ±10% of cycle 05            |
+| 5 | `no-std-final-benchmark`               | done    | Re-run confirms zero regression; cycle complete          |
 
 ---
 
