@@ -1,6 +1,6 @@
-use std::fmt;
-use std::ops::{Add, Div, Mul, Neg, Sub};
-use std::str::FromStr;
+use core::fmt;
+use core::ops::{Add, Div, Mul, Neg, Sub};
+use core::str::FromStr;
 
 #[inline(always)]
 const fn const_pow10(s: u32) -> i64 {
@@ -68,6 +68,7 @@ impl<const S: u32> Decimal64<S> {
     /// Convert from `f64` using `Round::NearestEven` (banker's rounding).
     ///
     /// `NaN` maps to `ZERO`; overflow clamps to `MAX`/`MIN`.
+    #[cfg(feature = "std")]
     #[inline]
     pub fn from_f64(x: f64) -> Self {
         Self::from_f64_round(x, crate::Round::NearestEven)
@@ -76,6 +77,7 @@ impl<const S: u32> Decimal64<S> {
     /// Convert from `f64` with an explicit rounding mode.
     ///
     /// `NaN` maps to `ZERO`; overflow clamps to `MAX`/`MIN`.
+    #[cfg(feature = "std")]
     pub fn from_f64_round(x: f64, mode: crate::Round) -> Self {
         if x.is_nan() {
             return Self::ZERO;
@@ -97,8 +99,7 @@ impl<const S: u32> Decimal64<S> {
     /// Convert to `f64`. Lossless for `|raw| < 2^53`; larger values lose the last few ULPs.
     #[inline]
     pub fn to_f64(self) -> f64 {
-        let scale_factor = 10f64.powi(S as i32);
-        (self.0 as f64) / scale_factor
+        (self.0 as f64) / (const_pow10(S) as f64)
     }
 }
 
@@ -368,6 +369,8 @@ fn div_round_i128(num: i128, den: i128, mode: crate::Round) -> i128 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     #[test]
     fn one_raw_equals_pow10() {
@@ -411,6 +414,7 @@ mod tests {
 
     // f64 conversion tests
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_nearest_even_1_005() {
         // 1.005 in f64 is actually ~1.00499999..., so 1.005 * 100 < 100.5
@@ -418,17 +422,20 @@ mod tests {
         assert_eq!(Decimal64::<2>::from_f64(1.005).raw(), 100);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_rounded_four_scale() {
         // 1.23456789 * 10000 = 12345.6789 → rounds to 12346
         assert_eq!(Decimal64::<4>::from_f64(1.23456789).raw(), 12346);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_nan_is_zero() {
         assert_eq!(Decimal64::<2>::from_f64(f64::NAN).raw(), 0);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_f64_infinity_clamps_to_max() {
         assert_eq!(Decimal64::<2>::from_f64(f64::INFINITY).raw(), i64::MAX);
@@ -619,6 +626,7 @@ mod tests {
         assert_eq!(result, Some(d));
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn round_trip_within_precision() {
         // Simple LCG for deterministic pseudo-random values

@@ -1,4 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
 
 use crate::{Decimal64, Scientific, UDecimal64};
 
@@ -15,7 +17,7 @@ struct D64Visitor<const S: u32>;
 impl<'de, const S: u32> serde::de::Visitor<'de> for D64Visitor<S> {
     type Value = Decimal64<S>;
 
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "a decimal string like \"123.4567\"")
     }
 
@@ -43,7 +45,7 @@ struct UD64Visitor<const S: u32>;
 impl<'de, const S: u32> serde::de::Visitor<'de> for UD64Visitor<S> {
     type Value = UDecimal64<S>;
 
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "an unsigned decimal string like \"10.00\"")
     }
 
@@ -71,7 +73,7 @@ struct SciD64Visitor<const S: u32>;
 impl<'de, const S: u32> serde::de::Visitor<'de> for SciD64Visitor<S> {
     type Value = Scientific<Decimal64<S>>;
 
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "a scientific notation decimal string like \"1.2345e2\"")
     }
 
@@ -99,7 +101,7 @@ struct SciUD64Visitor<const S: u32>;
 impl<'de, const S: u32> serde::de::Visitor<'de> for SciUD64Visitor<S> {
     type Value = Scientific<UDecimal64<S>>;
 
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "a scientific notation decimal string like \"1.23e2\"")
     }
 
