@@ -4,6 +4,9 @@ version = "0.2.1"
 edition = "2024"
 description = "Fast fixed point arithmetic that only uses i64/u64 as internal representation."
 license = "MIT"
+homepage = "https://github.com/dunnock/scaled-int"
+repository = "https://github.com/dunnock/scaled-int"
+documentation = "https://docs.rs/scaled_int"
 
 [features]
 default = ["std"]
