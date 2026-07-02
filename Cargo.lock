@@ -832,11 +832,12 @@ dependencies = [
 
 [[package]]
 name = "scaled_int"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "atoi_simd",
  "bigdecimal",
  "criterion",
+ "itoa",
  "memchr",
  "postcard",
  "rust_decimal",

@@ -1,7 +1,7 @@
 use atoi_simd::parse_pos;
 use criterion::{Criterion, criterion_group, criterion_main};
 use memchr::memchr;
-use scaledint::{Decimal64, ParseError};
+use scaled_int::{Decimal64, ParseError};
 use std::hint::black_box;
 use std::str::FromStr;
 
@@ -234,7 +234,7 @@ fn bench_parse_udecimal64(c: &mut Criterion) {
     let mut group = c.benchmark_group("parse_udecimal64");
     for s in CORPUS.iter().copied() {
         group.bench_function(s, |b| {
-            b.iter(|| black_box(scaledint::UDecimal64::<4>::parse(black_box(s))))
+            b.iter(|| black_box(scaled_int::UDecimal64::<4>::parse(black_box(s))))
         });
     }
     group.finish();

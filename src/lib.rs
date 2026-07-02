@@ -7,12 +7,12 @@
 //! # Quick start
 //!
 //! ```rust
-//! use scaledint::Decimal64;
+//! use scaled_int::Decimal64;
 //!
 //! let price: Decimal64<4> = "123.4567".parse().unwrap();
 //! let qty: Decimal64<4> = "10.0000".parse().unwrap();
 //! let total = price * qty;
-//! assert_eq!(total.to_string(), "1234.5670");
+//! assert_eq!(total.to_string(), "1234.567");
 //! ```
 //!
 //! See `docs/design.md` for the full design rationale, API surface, and

@@ -1,6 +1,6 @@
 [package]
 name = "scaled_int"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Fast fixed point arithmetic that only uses i64/u64 as internal representation."
 license = "MIT"
@@ -12,6 +12,7 @@ alloc  = ["serde?/alloc"]
 serde  = ["dep:serde", "alloc"]
 
 [dependencies]
+itoa = "1"
 serde = { version = "1.0", optional = true, default-features = false }
 
 [lib]

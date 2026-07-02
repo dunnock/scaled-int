@@ -295,7 +295,7 @@ impl<const S: u32> fmt::Display for Scientific<UDecimal64<S>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::string::ToString;
 
     type S4 = Scientific<Decimal64<4>>;
@@ -412,11 +412,13 @@ mod tests {
         assert!(matches!(r, Err(ParseError::InvalidChar { .. })));
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_zero() {
         assert_eq!(Scientific(Decimal64::<4>::from_raw(0)).to_string(), "0e0");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_basic() {
         assert_eq!(
@@ -425,6 +427,7 @@ mod tests {
         );
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_small_coeff() {
         // raw=100, scale=4 → 0.0100 → 1e-2
@@ -434,6 +437,7 @@ mod tests {
         );
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_large() {
         // raw=1234500, scale=4 → 123.45 → 1.2345e2 (trailing zeros stripped)
@@ -443,6 +447,7 @@ mod tests {
         );
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_one_unit() {
         // raw=10000, scale=4 → 1.0 → 1e0 (fractional zeros stripped)
@@ -452,12 +457,14 @@ mod tests {
         );
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_smallest_nonzero() {
         // raw=1, scale=4 → 0.0001 → 1e-4
         assert_eq!(Scientific(Decimal64::<4>::from_raw(1)).to_string(), "1e-4");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_negative() {
         assert_eq!(
@@ -466,11 +473,13 @@ mod tests {
         );
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_unsigned_zero() {
         assert_eq!(Scientific(UDecimal64::<4>::from_raw(0)).to_string(), "0e0");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_unsigned_basic() {
         assert_eq!(
@@ -493,6 +502,7 @@ mod tests {
         assert_eq!(inner.raw(), 12345);
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn round_trip_display_parse() {
         let cases: &[i64] = &[

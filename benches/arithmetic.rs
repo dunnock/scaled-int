@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use scaledint::{Decimal64, UDecimal64};
+use scaled_int::{Decimal64, UDecimal64};
 use std::hint::black_box;
 
 // Scale 4 — primary benchmark operands (financial prices)

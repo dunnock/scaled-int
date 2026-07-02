@@ -471,9 +471,9 @@ impl<const S: u32> fmt::Debug for UDecimal64<S> {
 mod tests {
     use super::*;
     use crate::{Decimal64, ParseError};
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::format;
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::string::ToString;
 
     // ── Constants ────────────────────────────────────────────────────────────
@@ -567,6 +567,7 @@ mod tests {
         assert!(matches!(r, Err(ParseError::InvalidChar { .. })));
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn parse_round_trip() {
         let mut seed: u64 = 0xdeadbeef_cafebabe;
@@ -587,26 +588,31 @@ mod tests {
 
     // ── Display ──────────────────────────────────────────────────────────────
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_basic() {
         assert_eq!(UDecimal64::<2>(123).to_string(), "1.23");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_zero_scale() {
         assert_eq!(UDecimal64::<0>(42).to_string(), "42");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_zero() {
         assert_eq!(UDecimal64::<2>(0).to_string(), "0.00");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_fractional_padding() {
         assert_eq!(UDecimal64::<4>(1234567).to_string(), "123.4567");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn debug_format() {
         assert_eq!(

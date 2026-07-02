@@ -215,12 +215,12 @@ mod tests {
     #[test]
     fn d64_serde_token_zero() {
         let v: Decimal64<4> = Decimal64::ZERO;
-        serde_test::assert_ser_tokens(&v, &[serde_test::Token::Str("0.0000")]);
+        serde_test::assert_ser_tokens(&v, &[serde_test::Token::Str("0")]);
     }
 
     #[test]
     fn d64_serde_token_negative() {
         let v: Decimal64<4> = "-1.0000".parse().unwrap();
-        serde_test::assert_ser_tokens(&v, &[serde_test::Token::Str("-1.0000")]);
+        serde_test::assert_ser_tokens(&v, &[serde_test::Token::Str("-1")]);
     }
 }

@@ -79,7 +79,7 @@ pub(crate) fn parse_slice<const S: u32>(bytes: &[u8]) -> Result<Decimal64<S>, Pa
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::string::ToString;
 
     #[test]
@@ -157,6 +157,7 @@ mod tests {
         assert_eq!(d.raw(), 1_234_567);
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn round_trip() {
         // LCG for deterministic pseudo-random values; skip i64::MIN (abs overflows i64)

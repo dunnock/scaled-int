@@ -1,4 +1,4 @@
-use core::fmt;
+use core::fmt::{self, Write};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::str::FromStr;
 
@@ -146,19 +146,28 @@ impl<const S: u32> Decimal64<S> {
 
 impl<const S: u32> fmt::Display for Decimal64<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if S == 0 {
-            return write!(f, "{}", self.0);
+        let scale = const_pow10(S);
+        let int_part = self.0 / scale;
+        if self.0 < 0 && int_part == 0 {
+            f.write_char('-')?;
         }
-        let neg = self.0 < 0;
-        let abs = self.0.unsigned_abs();
-        let divisor = const_pow10(S) as u64;
-        let integer = abs / divisor;
-        let frac = abs % divisor;
-        if neg {
-            write!(f, "-{}.{:0>width$}", integer, frac, width = S as usize)
-        } else {
-            write!(f, "{}.{:0>width$}", integer, frac, width = S as usize)
+
+        let mut buffer = itoa::Buffer::new();
+        f.write_str(buffer.format(int_part))?;
+
+        let mut frac = self.0.unsigned_abs() % scale as u64;
+        if frac > 0 {
+            f.write_char('.')?;
         }
+        let mut divisor = scale as u64;
+        while frac > 0 {
+            divisor /= 10;
+            let digit = b'0' + (frac / divisor) as u8;
+            frac %= divisor;
+            f.write_char(digit as char)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -500,7 +509,7 @@ fn div_round_i128<const MODE: RoundFlagEnum>(num: i128, den: i128) -> i128 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::string::ToString;
 
     #[test]
@@ -508,11 +517,13 @@ mod tests {
         assert_eq!(Decimal64::<4>::ONE.raw(), 10_000);
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_basic() {
         assert_eq!(Decimal64::<2>(123).to_string(), "1.23");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_zero_scale() {
         assert_eq!(Decimal64::<0>(42).to_string(), "42");
@@ -528,16 +539,32 @@ mod tests {
         assert!(Decimal64::<2>(-100) < Decimal64::<2>(0));
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_zero() {
-        assert_eq!(Decimal64::<2>(0).to_string(), "0.00");
+        assert_eq!(Decimal64::<2>(0).to_string(), "0");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_negative() {
-        assert_eq!(Decimal64::<2>(-100).to_string(), "-1.00");
+        assert_eq!(Decimal64::<2>(-100).to_string(), "-1");
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[test]
+    fn display_negative_fraction_less_than_one() {
+        assert_eq!(Decimal64::<4>(-5000).to_string(), "-0.5");
+    }
+
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[test]
+    fn display_truncates_trailing_zeros() {
+        assert_eq!(Decimal64::<4>(1200).to_string(), "0.12");
+        assert_eq!(Decimal64::<4>(1020).to_string(), "0.102");
+    }
+
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn display_fractional_padding() {
         assert_eq!(Decimal64::<4>(1234567).to_string(), "123.4567");
