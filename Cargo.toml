@@ -2,6 +2,8 @@
 name = "decimal64"
 version = "0.1.0"
 edition = "2024"
+description = "Fast fixed point arithmetic that only uses i64/u64 as internal representation."
+license = "MIT or APACHE"
 
 [features]
 default = ["std"]
