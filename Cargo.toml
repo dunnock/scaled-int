@@ -1,6 +1,6 @@
 [package]
 name = "scaled_int"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "Fast fixed point arithmetic that only uses i64/u64 as internal representation."
 license = "MIT"
