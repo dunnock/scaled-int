@@ -831,7 +831,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "scaledint"
+name = "scaled_int"
 version = "0.2.0"
 dependencies = [
  "atoi_simd",
