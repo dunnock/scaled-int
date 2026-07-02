@@ -1,12 +1,12 @@
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::string::ToString;
 #[cfg(any(feature = "std", feature = "alloc"))]
 use core::fmt;
 use core::str::FromStr;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
 
+use crate::ParseError;
 use crate::decimal64::Decimal64;
 use crate::udecimal64::UDecimal64;
-use crate::ParseError;
 
 /// Newtype wrapper that adds scientific-notation parsing and display to any
 /// `Decimal64<S>` or `UDecimal64<S>`.
@@ -115,7 +115,10 @@ fn parse_exponent(s: &str) -> Result<i32, ParseError> {
     for (idx, &b) in bytes[start..].iter().enumerate() {
         let d = b.wrapping_sub(b'0');
         if d > 9 {
-            return Err(ParseError::InvalidChar { byte: b, pos: start + idx });
+            return Err(ParseError::InvalidChar {
+                byte: b,
+                pos: start + idx,
+            });
         }
         acc = acc
             .checked_mul(10)
@@ -139,7 +142,11 @@ fn apply_exponent_i64(raw: i64, exponent: i32) -> Result<i64, ParseError> {
 #[inline(always)]
 fn apply_positive_exp_i64(raw: i64, exp: u32) -> Result<i64, ParseError> {
     if exp > 18 {
-        return if raw == 0 { Ok(0) } else { Err(ParseError::Overflow) };
+        return if raw == 0 {
+            Ok(0)
+        } else {
+            Err(ParseError::Overflow)
+        };
     }
     raw.checked_mul(pow10_i64(exp)).ok_or(ParseError::Overflow)
 }
@@ -147,7 +154,11 @@ fn apply_positive_exp_i64(raw: i64, exp: u32) -> Result<i64, ParseError> {
 #[inline(always)]
 fn apply_negative_exp_i64(raw: i64, neg_exp: u32) -> Result<i64, ParseError> {
     if neg_exp > 18 {
-        return if raw == 0 { Ok(0) } else { Err(ParseError::Underflow) };
+        return if raw == 0 {
+            Ok(0)
+        } else {
+            Err(ParseError::Underflow)
+        };
     }
     Ok(raw / pow10_i64(neg_exp))
 }
@@ -166,7 +177,11 @@ fn apply_exponent_u64(raw: u64, exponent: i32) -> Result<u64, ParseError> {
 #[inline(always)]
 fn apply_positive_exp_u64(raw: u64, exp: u32) -> Result<u64, ParseError> {
     if exp > 19 {
-        return if raw == 0 { Ok(0) } else { Err(ParseError::Overflow) };
+        return if raw == 0 {
+            Ok(0)
+        } else {
+            Err(ParseError::Overflow)
+        };
     }
     raw.checked_mul(pow10_u64(exp)).ok_or(ParseError::Overflow)
 }
@@ -174,7 +189,11 @@ fn apply_positive_exp_u64(raw: u64, exp: u32) -> Result<u64, ParseError> {
 #[inline(always)]
 fn apply_negative_exp_u64(raw: u64, neg_exp: u32) -> Result<u64, ParseError> {
     if neg_exp > 19 {
-        return if raw == 0 { Ok(0) } else { Err(ParseError::Underflow) };
+        return if raw == 0 {
+            Ok(0)
+        } else {
+            Err(ParseError::Underflow)
+        };
     }
     Ok(raw / pow10_u64(neg_exp))
 }
@@ -400,25 +419,37 @@ mod tests {
 
     #[test]
     fn display_basic() {
-        assert_eq!(Scientific(Decimal64::<4>::from_raw(12345)).to_string(), "1.2345e0");
+        assert_eq!(
+            Scientific(Decimal64::<4>::from_raw(12345)).to_string(),
+            "1.2345e0"
+        );
     }
 
     #[test]
     fn display_small_coeff() {
         // raw=100, scale=4 → 0.0100 → 1e-2
-        assert_eq!(Scientific(Decimal64::<4>::from_raw(100)).to_string(), "1e-2");
+        assert_eq!(
+            Scientific(Decimal64::<4>::from_raw(100)).to_string(),
+            "1e-2"
+        );
     }
 
     #[test]
     fn display_large() {
         // raw=1234500, scale=4 → 123.45 → 1.2345e2 (trailing zeros stripped)
-        assert_eq!(Scientific(Decimal64::<4>::from_raw(1234500)).to_string(), "1.2345e2");
+        assert_eq!(
+            Scientific(Decimal64::<4>::from_raw(1234500)).to_string(),
+            "1.2345e2"
+        );
     }
 
     #[test]
     fn display_one_unit() {
         // raw=10000, scale=4 → 1.0 → 1e0 (fractional zeros stripped)
-        assert_eq!(Scientific(Decimal64::<4>::from_raw(10000)).to_string(), "1e0");
+        assert_eq!(
+            Scientific(Decimal64::<4>::from_raw(10000)).to_string(),
+            "1e0"
+        );
     }
 
     #[test]
@@ -429,7 +460,10 @@ mod tests {
 
     #[test]
     fn display_negative() {
-        assert_eq!(Scientific(Decimal64::<4>::from_raw(-12345)).to_string(), "-1.2345e0");
+        assert_eq!(
+            Scientific(Decimal64::<4>::from_raw(-12345)).to_string(),
+            "-1.2345e0"
+        );
     }
 
     #[test]
@@ -439,7 +473,10 @@ mod tests {
 
     #[test]
     fn display_unsigned_basic() {
-        assert_eq!(Scientific(UDecimal64::<4>::from_raw(12345)).to_string(), "1.2345e0");
+        assert_eq!(
+            Scientific(UDecimal64::<4>::from_raw(12345)).to_string(),
+            "1.2345e0"
+        );
     }
 
     #[test]
@@ -473,10 +510,14 @@ mod tests {
         for &raw in cases {
             let d = Scientific(Decimal64::<4>::from_raw(raw));
             let s = d.to_string();
-            let parsed: S4 = s.parse().unwrap_or_else(|e| {
-                panic!("round-trip failed for raw={raw}: s={s:?}, err={e}")
-            });
-            assert_eq!(parsed.0.raw(), raw, "round-trip mismatch for raw={raw}, s={s:?}");
+            let parsed: S4 = s
+                .parse()
+                .unwrap_or_else(|e| panic!("round-trip failed for raw={raw}: s={s:?}, err={e}"));
+            assert_eq!(
+                parsed.0.raw(),
+                raw,
+                "round-trip mismatch for raw={raw}, s={s:?}"
+            );
         }
     }
 

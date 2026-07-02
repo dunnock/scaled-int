@@ -1,14 +1,14 @@
-# decimal64
+# scaledint
 
 64-bit fixed-point decimal with compile-time scale, for Rust.
 
-[![Crates.io](https://img.shields.io/crates/v/decimal64.svg)](https://crates.io/crates/decimal64)
-[![docs.rs](https://img.shields.io/docsrs/decimal64)](https://docs.rs/decimal64)
+[![Crates.io](https://img.shields.io/crates/v/scaledint.svg)](https://crates.io/crates/scaledint)
+[![docs.rs](https://img.shields.io/docsrs/scaledint)](https://docs.rs/scaledint)
 
 ## Quick start
 
 ```rust
-use decimal64::Decimal64;
+use scaledint::Decimal64;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let price: Decimal64<4> = "123.4567".parse()?;
@@ -69,7 +69,7 @@ Overflow panics. Use `checked_mul` / `saturating_mul` for fallible or clamping v
 ### Division
 
 `a / b` computes `(a.raw() * 10^S) / b.raw()` in `i128`, **truncating toward zero**.
-Division by zero panics. Use `checked_div` or `div_round(rhs, mode)` for alternatives.
+Division by zero panics. Use `checked_div` or `div_round_nearest(rhs)` for alternatives.
 
 ### Checked and saturating variants
 
@@ -85,8 +85,8 @@ a.saturating_add(b)        // → Decimal64<S>  (clamps to MAX/MIN)
 a.saturating_sub(b)        // → Decimal64<S>
 a.saturating_mul(b)        // → Decimal64<S>
 
-a.div_round(b, Round::NearestEven)          // panics on div-by-zero
-a.checked_div_round(b, Round::TowardPosInf) // → Option<Decimal64<S>>
+a.div_round_nearest_even(b)          // panics on div-by-zero
+a.checked_div_round_ceil(b) // → Option<Decimal64<S>>
 ```
 
 ### Rescaling
@@ -95,7 +95,7 @@ a.checked_div_round(b, Round::TowardPosInf) // → Option<Decimal64<S>>
 let d2: Decimal64<2> = "1.25".parse().unwrap();
 let d4: Decimal64<4> = d2.rescale_into::<4>().unwrap();  // 1.2500 — exact, always succeeds
 let d1: Decimal64<1> = d2.rescale_into::<1>();  // None — "1.25" has fractional digits lost
-let d1r = d2.rescale_round_into::<1>(Round::Nearest).unwrap();  // 1.3
+let d1r = d2.rescale_round_into_nearest::<1>().unwrap();  // 1.3
 ```
 
 ## Parsing
@@ -113,7 +113,7 @@ let d: Decimal64<4> = "5.".parse().unwrap();         // 5.0000
 
 ```rust
 let d = Decimal64::<4>::from_f64(1.23456789);          // NearestEven rounding
-let d = Decimal64::<4>::from_f64_round(x, Round::Nearest);
+let d = Decimal64::<4>::from_f64_nearest(x);
 let f: f64 = d.to_f64();
 ```
 
@@ -124,7 +124,7 @@ let f: f64 = d.to_f64();
 
 Parse throughput vs. competitors at `Decimal64::<4>` on x86-64 Linux (stable Rust, optimised):
 
-| Input               | decimal64 (M/s) | f64 (M/s) | rust_decimal (M/s) | bigdecimal (M/s) |
+| Input               | scaledint (M/s) | f64 (M/s) | rust_decimal (M/s) | bigdecimal (M/s) |
 |---------------------|-----------------|-----------|---------------------|------------------|
 | `"0"`               | 214.6           | 157.2     | 102.0               | 37.1             |
 | `"1.23"`            | 191.2           | 130.9     | 90.6                | 20.9             |

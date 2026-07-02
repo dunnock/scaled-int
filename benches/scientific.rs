@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use decimal64::{Decimal64, Scientific};
+use scaledint::{Decimal64, Scientific};
 use std::hint::black_box;
 use std::str::FromStr;
 

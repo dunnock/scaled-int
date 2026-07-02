@@ -1,5 +1,5 @@
 [package]
-name = "decimal64"
+name = "scaledint"
 version = "0.1.0"
 edition = "2024"
 description = "Fast fixed point arithmetic that only uses i64/u64 as internal representation."
@@ -15,7 +15,7 @@ serde  = ["dep:serde", "alloc"]
 serde = { version = "1.0", optional = true, default-features = false }
 
 [lib]
-name = "decimal64"
+name = "scaledint"
 path = "src/lib.rs"
 
 [dev-dependencies]

@@ -2,6 +2,8 @@ use core::fmt;
 use core::ops::{Add, Div, Mul, Neg, Sub};
 use core::str::FromStr;
 
+use crate::{RoundFlag, RoundFlagEnum};
+
 #[inline(always)]
 const fn const_pow10(s: u32) -> i64 {
     assert!(s <= 18, "Decimal64 scale must be <= 18");
@@ -65,31 +67,63 @@ impl<const S: u32> Decimal64<S> {
 }
 
 impl<const S: u32> Decimal64<S> {
-    /// Convert from `f64` using `Round::NearestEven` (banker's rounding).
+    /// Convert from `f64` using nearest-even (banker's) rounding.
     ///
     /// `NaN` maps to `ZERO`; overflow clamps to `MAX`/`MIN`.
     #[cfg(feature = "std")]
     #[inline]
     pub fn from_f64(x: f64) -> Self {
-        Self::from_f64_round(x, crate::Round::NearestEven)
+        Self::from_f64_round_impl::<{ crate::RoundFlag::NEAREST_EVEN }>(x)
     }
 
-    /// Convert from `f64` with an explicit rounding mode.
-    ///
-    /// `NaN` maps to `ZERO`; overflow clamps to `MAX`/`MIN`.
+    /// Convert from `f64` using nearest-even (banker's) rounding.
     #[cfg(feature = "std")]
-    pub fn from_f64_round(x: f64, mode: crate::Round) -> Self {
+    #[inline]
+    pub fn from_f64_nearest_even(x: f64) -> Self {
+        Self::from_f64_round_impl::<{ crate::RoundFlag::NEAREST_EVEN }>(x)
+    }
+
+    /// Convert from `f64` using nearest, ties away from zero.
+    #[cfg(feature = "std")]
+    #[inline]
+    pub fn from_f64_nearest(x: f64) -> Self {
+        Self::from_f64_round_impl::<{ crate::RoundFlag::NEAREST }>(x)
+    }
+
+    /// Convert from `f64` by truncating toward zero.
+    #[cfg(feature = "std")]
+    #[inline]
+    pub fn from_f64_zero(x: f64) -> Self {
+        Self::from_f64_round_impl::<{ crate::RoundFlag::ZERO }>(x)
+    }
+
+    /// Convert from `f64` by rounding toward positive infinity.
+    #[cfg(feature = "std")]
+    #[inline]
+    pub fn from_f64_ceil(x: f64) -> Self {
+        Self::from_f64_round_impl::<{ crate::RoundFlag::CEIL }>(x)
+    }
+
+    /// Convert from `f64` by rounding toward negative infinity.
+    #[cfg(feature = "std")]
+    #[inline]
+    pub fn from_f64_floor(x: f64) -> Self {
+        Self::from_f64_round_impl::<{ crate::RoundFlag::FLOOR }>(x)
+    }
+
+    #[cfg(feature = "std")]
+    fn from_f64_round_impl<const MODE: RoundFlagEnum>(x: f64) -> Self {
         if x.is_nan() {
             return Self::ZERO;
         }
         let scale_factor = 10f64.powi(S as i32);
         let scaled = x * scale_factor;
-        let rounded = match mode {
-            crate::Round::NearestEven => scaled.round_ties_even(),
-            crate::Round::Nearest => scaled.round(),
-            crate::Round::Zero => scaled.trunc(),
-            crate::Round::Ceil => scaled.ceil(),
-            crate::Round::Floor => scaled.floor(),
+        let rounded = match RoundFlag::from_u8(MODE) {
+            crate::RoundFlag::NearestEven => scaled.round_ties_even(),
+            crate::RoundFlag::Nearest => scaled.round(),
+            crate::RoundFlag::Zero => scaled.trunc(),
+            crate::RoundFlag::Ceil => scaled.ceil(),
+            crate::RoundFlag::Floor => scaled.floor(),
         };
         // Clamp before cast; saturating cast handles edge cases in Rust 1.45+
         let clamped = rounded.clamp(i64::MIN as f64, i64::MAX as f64);
@@ -260,21 +294,80 @@ impl<const S: u32> Decimal64<S> {
         Self(result.clamp(i64::MIN as i128, i64::MAX as i128) as i64)
     }
 
-    /// Divide with an explicit rounding mode. Panics on division by zero or overflow.
-    pub fn div_round(self, rhs: Self, mode: crate::Round) -> Self {
-        self.checked_div_round(rhs, mode)
+    /// Divide using nearest-even (banker's) rounding. Panics on division by zero or overflow.
+    #[inline]
+    pub fn div_round_nearest_even(self, rhs: Self) -> Self {
+        self.div_round_impl::<{ crate::RoundFlag::NEAREST_EVEN }>(rhs)
+    }
+
+    /// Divide using nearest, ties away from zero. Panics on division by zero or overflow.
+    #[inline]
+    pub fn div_round_nearest(self, rhs: Self) -> Self {
+        self.div_round_impl::<{ crate::RoundFlag::NEAREST }>(rhs)
+    }
+
+    /// Divide by truncating toward zero. Panics on division by zero or overflow.
+    #[inline]
+    pub fn div_round_zero(self, rhs: Self) -> Self {
+        self.div_round_impl::<{ crate::RoundFlag::ZERO }>(rhs)
+    }
+
+    /// Divide by rounding toward positive infinity. Panics on division by zero or overflow.
+    #[inline]
+    pub fn div_round_ceil(self, rhs: Self) -> Self {
+        self.div_round_impl::<{ crate::RoundFlag::CEIL }>(rhs)
+    }
+
+    /// Divide by rounding toward negative infinity. Panics on division by zero or overflow.
+    #[inline]
+    pub fn div_round_floor(self, rhs: Self) -> Self {
+        self.div_round_impl::<{ crate::RoundFlag::FLOOR }>(rhs)
+    }
+
+    /// Divide using nearest-even (banker's) rounding. Returns `None` on division by zero or overflow.
+    #[inline]
+    pub fn checked_div_round_nearest_even(self, rhs: Self) -> Option<Self> {
+        self.checked_div_round_impl::<{ crate::RoundFlag::NEAREST_EVEN }>(rhs)
+    }
+
+    /// Divide using nearest, ties away from zero. Returns `None` on division by zero or overflow.
+    #[inline]
+    pub fn checked_div_round_nearest(self, rhs: Self) -> Option<Self> {
+        self.checked_div_round_impl::<{ crate::RoundFlag::NEAREST }>(rhs)
+    }
+
+    /// Divide by truncating toward zero. Returns `None` on division by zero or overflow.
+    #[inline]
+    pub fn checked_div_round_zero(self, rhs: Self) -> Option<Self> {
+        self.checked_div_round_impl::<{ crate::RoundFlag::ZERO }>(rhs)
+    }
+
+    /// Divide by rounding toward positive infinity. Returns `None` on division by zero or overflow.
+    #[inline]
+    pub fn checked_div_round_ceil(self, rhs: Self) -> Option<Self> {
+        self.checked_div_round_impl::<{ crate::RoundFlag::CEIL }>(rhs)
+    }
+
+    /// Divide by rounding toward negative infinity. Returns `None` on division by zero or overflow.
+    #[inline]
+    pub fn checked_div_round_floor(self, rhs: Self) -> Option<Self> {
+        self.checked_div_round_impl::<{ crate::RoundFlag::FLOOR }>(rhs)
+    }
+
+    #[inline]
+    fn div_round_impl<const MODE: RoundFlagEnum>(self, rhs: Self) -> Self {
+        self.checked_div_round_impl::<MODE>(rhs)
             .expect("Decimal64 div_round: division by zero or overflow")
     }
 
-    /// Divide with an explicit rounding mode. Returns `None` on division by zero or overflow.
     #[inline]
-    pub fn checked_div_round(self, rhs: Self, mode: crate::Round) -> Option<Self> {
+    fn checked_div_round_impl<const MODE: RoundFlagEnum>(self, rhs: Self) -> Option<Self> {
         if rhs.0 == 0 {
             return None;
         }
         let num = self.0 as i128 * const_pow10(S) as i128;
         let den = rhs.0 as i128;
-        let result = div_round_i128(num, den, mode);
+        let result = div_round_i128::<MODE>(num, den);
         Some(Self(result.try_into().ok()?))
     }
 
@@ -296,14 +389,46 @@ impl<const S: u32> Decimal64<S> {
         }
     }
 
-    /// Rescale with rounding. Returns `None` only on overflow.
-    pub fn rescale_round_into<const OUT: u32>(self, mode: crate::Round) -> Option<Decimal64<OUT>> {
+    /// Rescale using nearest-even (banker's) rounding. Returns `None` only on overflow.
+    #[inline]
+    pub fn rescale_round_into_nearest_even<const OUT: u32>(self) -> Option<Decimal64<OUT>> {
+        self.rescale_round_into_impl::<OUT, { crate::RoundFlag::NEAREST_EVEN }>()
+    }
+
+    /// Rescale using nearest, ties away from zero. Returns `None` only on overflow.
+    #[inline]
+    pub fn rescale_round_into_nearest<const OUT: u32>(self) -> Option<Decimal64<OUT>> {
+        self.rescale_round_into_impl::<OUT, { crate::RoundFlag::NEAREST }>()
+    }
+
+    /// Rescale by truncating toward zero. Returns `None` only on overflow.
+    #[inline]
+    pub fn rescale_round_into_zero<const OUT: u32>(self) -> Option<Decimal64<OUT>> {
+        self.rescale_round_into_impl::<OUT, { crate::RoundFlag::ZERO }>()
+    }
+
+    /// Rescale by rounding toward positive infinity. Returns `None` only on overflow.
+    #[inline]
+    pub fn rescale_round_into_ceil<const OUT: u32>(self) -> Option<Decimal64<OUT>> {
+        self.rescale_round_into_impl::<OUT, { crate::RoundFlag::CEIL }>()
+    }
+
+    /// Rescale by rounding toward negative infinity. Returns `None` only on overflow.
+    #[inline]
+    pub fn rescale_round_into_floor<const OUT: u32>(self) -> Option<Decimal64<OUT>> {
+        self.rescale_round_into_impl::<OUT, { crate::RoundFlag::FLOOR }>()
+    }
+
+    #[inline]
+    fn rescale_round_into_impl<const OUT: u32, const MODE: RoundFlagEnum>(
+        self,
+    ) -> Option<Decimal64<OUT>> {
         if OUT > S {
             let factor = const_pow10(OUT - S);
             self.0.checked_mul(factor).map(Decimal64::from_raw)
         } else if OUT < S {
             let factor = const_pow10(S - OUT) as i128;
-            let result = div_round_i128(self.0 as i128, factor, mode);
+            let result = div_round_i128::<MODE>(self.0 as i128, factor);
             if result >= i64::MIN as i128 && result <= i64::MAX as i128 {
                 Some(Decimal64::from_raw(result as i64))
             } else {
@@ -317,7 +442,7 @@ impl<const S: u32> Decimal64<S> {
 
 /// Integer division with rounding. `den` must be non-zero.
 /// Uses truncating division as the base; applies `mode` to adjust.
-fn div_round_i128(num: i128, den: i128, mode: crate::Round) -> i128 {
+fn div_round_i128<const MODE: RoundFlagEnum>(num: i128, den: i128) -> i128 {
     debug_assert!(den != 0);
     let q = num / den;
     let r = num % den; // same sign as num (Rust truncates toward zero)
@@ -326,17 +451,17 @@ fn div_round_i128(num: i128, den: i128, mode: crate::Round) -> i128 {
         return q;
     }
 
-    match mode {
-        crate::Round::Zero => q,
-        crate::Round::Ceil => {
+    match RoundFlag::from_u8(MODE) {
+        crate::RoundFlag::Zero => q,
+        crate::RoundFlag::Ceil => {
             // ceil: add 1 when the fractional part is positive (r and den same sign)
             if (r > 0) == (den > 0) { q + 1 } else { q }
         }
-        crate::Round::Floor => {
+        crate::RoundFlag::Floor => {
             // floor: subtract 1 when the fractional part is negative (r and den opposite sign)
             if (r > 0) != (den > 0) { q - 1 } else { q }
         }
-        crate::Round::Nearest => {
+        crate::RoundFlag::Nearest => {
             // half away from zero
             let abs_2r = r.unsigned_abs().saturating_mul(2);
             let abs_d = den.unsigned_abs();
@@ -346,7 +471,7 @@ fn div_round_i128(num: i128, den: i128, mode: crate::Round) -> i128 {
                 q
             }
         }
-        crate::Round::NearestEven => {
+        crate::RoundFlag::NearestEven => {
             // banker's rounding
             let abs_2r = r.unsigned_abs().saturating_mul(2);
             let abs_d = den.unsigned_abs();
@@ -552,28 +677,28 @@ mod tests {
     #[test]
     fn div_round_nearest() {
         // 1.0 / 3.0 at scale 2: (100 * 100) / 300 = 33.33… → Nearest = 33
-        let result = Decimal64::<2>(100).div_round(Decimal64::<2>(300), crate::Round::Nearest);
+        let result = Decimal64::<2>(100).div_round_nearest(Decimal64::<2>(300));
         assert_eq!(result, Decimal64::<2>(33));
     }
 
     #[test]
     fn div_round_toward_pos_inf() {
         // 1.0 / 3.0 at scale 2: 33.33… → ceil = 34
-        let result = Decimal64::<2>(100).div_round(Decimal64::<2>(300), crate::Round::Ceil);
+        let result = Decimal64::<2>(100).div_round_ceil(Decimal64::<2>(300));
         assert_eq!(result, Decimal64::<2>(34));
     }
 
     #[test]
     fn div_round_toward_neg_inf() {
         // -1.0 / 3.0 at scale 2: -33.33… → floor = -34
-        let result = Decimal64::<2>(-100).div_round(Decimal64::<2>(300), crate::Round::Floor);
+        let result = Decimal64::<2>(-100).div_round_floor(Decimal64::<2>(300));
         assert_eq!(result, Decimal64::<2>(-34));
     }
 
     #[test]
     fn div_round_nearest_even_tie() {
         // 0.05 / 0.10 at scale 2: (5 * 100) / 10 = 50 exactly → already integer, no rounding
-        let result = Decimal64::<2>(5).div_round(Decimal64::<2>(10), crate::Round::NearestEven);
+        let result = Decimal64::<2>(5).div_round_nearest_even(Decimal64::<2>(10));
         assert_eq!(result, Decimal64::<2>(50));
     }
 
@@ -601,16 +726,14 @@ mod tests {
     #[test]
     fn rescale_round_into_downscale() {
         // 1.23 at scale 2 → scale 1 with Nearest: 1.23 rounds to 1.2 (raw 12)
-        let result: Option<Decimal64<1>> =
-            Decimal64::<2>(123).rescale_round_into(crate::Round::Nearest);
+        let result: Option<Decimal64<1>> = Decimal64::<2>(123).rescale_round_into_nearest::<1>();
         assert_eq!(result, Some(Decimal64::<1>(12)));
     }
 
     #[test]
     fn rescale_round_into_downscale_rounds_up() {
         // 1.25 at scale 2 → scale 1 with Nearest: 1.25 rounds to 1.3 (raw 13)
-        let result: Option<Decimal64<1>> =
-            Decimal64::<2>(125).rescale_round_into(crate::Round::Nearest);
+        let result: Option<Decimal64<1>> = Decimal64::<2>(125).rescale_round_into_nearest::<1>();
         assert_eq!(result, Some(Decimal64::<1>(13)));
     }
 

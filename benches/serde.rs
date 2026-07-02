@@ -1,5 +1,5 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use decimal64::Decimal64;
+use criterion::{Criterion, criterion_group, criterion_main};
+use scaledint::Decimal64;
 use serde::{Deserialize, Serialize};
 use std::hint::black_box;
 
@@ -12,7 +12,7 @@ static S_JSON_STR: &str = r#""123.4567""#;
 
 #[derive(Serialize, Deserialize)]
 struct RawRow {
-    #[serde(with = "decimal64::serde_as::raw_i64")]
+    #[serde(with = "scaledint::serde_as::raw_i64")]
     price: Decimal64<4>,
 }
 
@@ -22,7 +22,7 @@ struct RawRow {
 /// Pointer is a reference to a static, so it is valid and aligned.
 #[inline(always)]
 unsafe fn vload_i64(p: &i64) -> i64 {
-    std::ptr::read_volatile(p)
+    unsafe { std::ptr::read_volatile(p) }
 }
 
 fn bench_serde_json_serialize_d64(c: &mut Criterion) {
@@ -66,7 +66,9 @@ fn bench_postcard_serialize_raw_d64(c: &mut Criterion) {
     group.bench_function("123.4567", |b| {
         b.iter(|| {
             let raw = unsafe { vload_i64(&S_D64_RAW) };
-            let row = RawRow { price: Decimal64::<4>::from_raw(raw) };
+            let row = RawRow {
+                price: Decimal64::<4>::from_raw(raw),
+            };
             black_box(postcard::to_allocvec(&row).unwrap())
         })
     });
@@ -74,7 +76,9 @@ fn bench_postcard_serialize_raw_d64(c: &mut Criterion) {
 }
 
 fn bench_postcard_deserialize_raw_d64(c: &mut Criterion) {
-    let setup_row = RawRow { price: Decimal64::<4>::from_raw(D64_RAW) };
+    let setup_row = RawRow {
+        price: Decimal64::<4>::from_raw(D64_RAW),
+    };
     let bytes = postcard::to_allocvec(&setup_row).unwrap();
 
     let mut group = c.benchmark_group("postcard_deserialize_raw_d64");

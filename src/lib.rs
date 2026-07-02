@@ -7,7 +7,7 @@
 //! # Quick start
 //!
 //! ```rust
-//! use decimal64::Decimal64;
+//! use scaledint::Decimal64;
 //!
 //! let price: Decimal64<4> = "123.4567".parse().unwrap();
 //! let qty: Decimal64<4> = "10.0000".parse().unwrap();
@@ -38,23 +38,40 @@ pub mod serde_as;
 #[cfg(feature = "serde")]
 pub mod serde_impls;
 
-/// Rounding mode for `from_f64_round`, `div_round`, and `rescale_round_into`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Round {
-    /// IEEE 754 default: round to nearest, ties go to the even digit (banker's rounding).
-    NearestEven,
-    /// Round to nearest, ties go away from zero.
-    Nearest,
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum RoundFlag {
     /// Truncate toward zero (same as integer division).
-    Zero,
+    Zero = 0,
+    /// IEEE 754 default: round to nearest, ties go to the even digit (banker's rounding).
+    NearestEven = 2,
+    /// Round to nearest, ties go away from zero.
+    Nearest = 1,
     /// Round toward positive infinity (ceiling).
-    Ceil,
+    Ceil = 3,
     /// Round toward negative infinity (floor).
-    Floor,
+    Floor = 4,
+}
+pub(crate) type RoundFlagEnum = u8;
+impl RoundFlag {
+    pub(crate) const ZERO: u8 = 0;
+    pub(crate) const NEAREST: u8 = 1;
+    pub(crate) const NEAREST_EVEN: u8 = 2;
+    pub(crate) const CEIL: u8 = 3;
+    pub(crate) const FLOOR: u8 = 4;
+
+    pub(crate) const fn from_u8(val: u8) -> Self {
+        match val {
+            0 => Self::Zero,
+            1 => Self::Nearest,
+            2 => Self::NearestEven,
+            3 => Self::Ceil,
+            4 => Self::Floor,
+            _ => panic!("Unknown variant for RoundFlag enum"),
+        }
+    }
 }
 
-/// Errors returned by [`Decimal64::parse`], [`Scientific`], and the
-/// [`FromStr`](std::str::FromStr) impls.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     /// Input was empty, or contained only a sign or a bare dot.

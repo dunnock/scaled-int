@@ -15,7 +15,7 @@ fn bench_parse_decimal64(c: &mut Criterion) {
     let mut group = c.benchmark_group("parse_decimal64");
     for s in CORPUS.iter().copied() {
         group.bench_function(s, |b| {
-            b.iter(|| black_box(decimal64::Decimal64::<4>::parse(black_box(s))))
+            b.iter(|| black_box(scaledint::Decimal64::<4>::parse(black_box(s))))
         });
     }
     group.finish();
@@ -25,7 +25,7 @@ fn bench_parse_udecimal64(c: &mut Criterion) {
     let mut group = c.benchmark_group("parse_udecimal64");
     for s in CORPUS.iter().copied() {
         group.bench_function(s, |b| {
-            b.iter(|| black_box(decimal64::UDecimal64::<4>::parse(black_box(s))))
+            b.iter(|| black_box(scaledint::UDecimal64::<4>::parse(black_box(s))))
         });
     }
     group.finish();
