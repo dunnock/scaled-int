@@ -87,9 +87,9 @@ impl<const S: u32> Decimal64<S> {
         let rounded = match mode {
             crate::Round::NearestEven => scaled.round_ties_even(),
             crate::Round::Nearest => scaled.round(),
-            crate::Round::TruncateTowardZero => scaled.trunc(),
-            crate::Round::TowardPosInf => scaled.ceil(),
-            crate::Round::TowardNegInf => scaled.floor(),
+            crate::Round::Zero => scaled.trunc(),
+            crate::Round::Ceil => scaled.ceil(),
+            crate::Round::Floor => scaled.floor(),
         };
         // Clamp before cast; saturating cast handles edge cases in Rust 1.45+
         let clamped = rounded.clamp(i64::MIN as f64, i64::MAX as f64);
@@ -141,7 +141,11 @@ impl<const S: u32> Add for Decimal64<S> {
     type Output = Self;
     #[inline]
     fn add(self, rhs: Self) -> Self {
-        Self(self.0.checked_add(rhs.0).expect("Decimal64 addition overflow"))
+        Self(
+            self.0
+                .checked_add(rhs.0)
+                .expect("Decimal64 addition overflow"),
+        )
     }
 }
 
@@ -149,7 +153,11 @@ impl<const S: u32> Sub for Decimal64<S> {
     type Output = Self;
     #[inline]
     fn sub(self, rhs: Self) -> Self {
-        Self(self.0.checked_sub(rhs.0).expect("Decimal64 subtraction overflow"))
+        Self(
+            self.0
+                .checked_sub(rhs.0)
+                .expect("Decimal64 subtraction overflow"),
+        )
     }
 }
 
@@ -165,7 +173,8 @@ impl<const S: u32> Mul for Decimal64<S> {
     type Output = Self;
     #[inline]
     fn mul(self, rhs: Self) -> Self {
-        self.checked_mul(rhs).expect("Decimal64 multiplication overflow")
+        self.checked_mul(rhs)
+            .expect("Decimal64 multiplication overflow")
     }
 }
 
@@ -195,19 +204,17 @@ impl<const S: u32> Decimal64<S> {
     /// Returns `None` on overflow.
     #[inline(always)]
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-        // Fast path: i64 product covers most financial values at S <= 18
-        if let Some(product) = self.0.checked_mul(rhs.0) {
+        // Fast path: i64 product covers most financial values at S <= 5
+        if let Some(product) = self.0.checked_mul(rhs.0)
+            && S <= 6
+        {
             return Some(Self(product / const_pow10(S)));
         }
         // Slow path: full i128 handles large magnitudes and i64::MIN × -1
         let product = self.0 as i128 * rhs.0 as i128;
-        let scale   = const_pow10(S) as i128;
-        let result  = product / scale;
-        if result >= i64::MIN as i128 && result <= i64::MAX as i128 {
-            Some(Self(result as i64))
-        } else {
-            None
-        }
+        let scale = const_pow10(S) as i128;
+        let result = product / scale;
+        Some(Self(result.try_into().ok()?))
     }
 
     /// Returns `None` on division by zero or overflow.
@@ -222,13 +229,9 @@ impl<const S: u32> Decimal64<S> {
             return Some(Self(num / rhs.0));
         }
         // Slow path: full i128
-        let num    = self.0 as i128 * scale as i128;
+        let num = self.0 as i128 * scale as i128;
         let result = num / rhs.0 as i128;
-        if result >= i64::MIN as i128 && result <= i64::MAX as i128 {
-            Some(Self(result as i64))
-        } else {
-            None
-        }
+        Some(Self(result.try_into().ok()?))
     }
 
     /// Clamps to `MAX`/`MIN` on overflow instead of panicking.
@@ -252,8 +255,8 @@ impl<const S: u32> Decimal64<S> {
         }
         // Slow path: full i128 with clamp
         let product = self.0 as i128 * rhs.0 as i128;
-        let scale   = const_pow10(S) as i128;
-        let result  = product / scale;
+        let scale = const_pow10(S) as i128;
+        let result = product / scale;
         Self(result.clamp(i64::MIN as i128, i64::MAX as i128) as i64)
     }
 
@@ -272,11 +275,7 @@ impl<const S: u32> Decimal64<S> {
         let num = self.0 as i128 * const_pow10(S) as i128;
         let den = rhs.0 as i128;
         let result = div_round_i128(num, den, mode);
-        if result >= i64::MIN as i128 && result <= i64::MAX as i128 {
-            Some(Self(result as i64))
-        } else {
-            None
-        }
+        Some(Self(result.try_into().ok()?))
     }
 
     /// Lossless rescale. Returns `None` if fractional digits would be lost or on overflow.
@@ -328,12 +327,12 @@ fn div_round_i128(num: i128, den: i128, mode: crate::Round) -> i128 {
     }
 
     match mode {
-        crate::Round::TruncateTowardZero => q,
-        crate::Round::TowardPosInf => {
+        crate::Round::Zero => q,
+        crate::Round::Ceil => {
             // ceil: add 1 when the fractional part is positive (r and den same sign)
             if (r > 0) == (den > 0) { q + 1 } else { q }
         }
-        crate::Round::TowardNegInf => {
+        crate::Round::Floor => {
             // floor: subtract 1 when the fractional part is negative (r and den opposite sign)
             if (r > 0) != (den > 0) { q - 1 } else { q }
         }
@@ -507,7 +506,10 @@ mod tests {
 
     #[test]
     fn mul_checked_overflow_returns_none() {
-        assert_eq!(Decimal64::<4>::MAX.checked_mul(Decimal64::<4>(20_000)), None);
+        assert_eq!(
+            Decimal64::<4>::MAX.checked_mul(Decimal64::<4>(20_000)),
+            None
+        );
     }
 
     #[test]
@@ -530,10 +532,7 @@ mod tests {
     #[test]
     fn div_truncates_toward_zero() {
         // 0.10 / 0.03 = 3.333…  raw: (10 * 100) / 3 = 333
-        assert_eq!(
-            Decimal64::<2>(10) / Decimal64::<2>(3),
-            Decimal64::<2>(333)
-        );
+        assert_eq!(Decimal64::<2>(10) / Decimal64::<2>(3), Decimal64::<2>(333));
     }
 
     #[test]
@@ -553,32 +552,28 @@ mod tests {
     #[test]
     fn div_round_nearest() {
         // 1.0 / 3.0 at scale 2: (100 * 100) / 300 = 33.33… → Nearest = 33
-        let result = Decimal64::<2>(100)
-            .div_round(Decimal64::<2>(300), crate::Round::Nearest);
+        let result = Decimal64::<2>(100).div_round(Decimal64::<2>(300), crate::Round::Nearest);
         assert_eq!(result, Decimal64::<2>(33));
     }
 
     #[test]
     fn div_round_toward_pos_inf() {
         // 1.0 / 3.0 at scale 2: 33.33… → ceil = 34
-        let result = Decimal64::<2>(100)
-            .div_round(Decimal64::<2>(300), crate::Round::TowardPosInf);
+        let result = Decimal64::<2>(100).div_round(Decimal64::<2>(300), crate::Round::Ceil);
         assert_eq!(result, Decimal64::<2>(34));
     }
 
     #[test]
     fn div_round_toward_neg_inf() {
         // -1.0 / 3.0 at scale 2: -33.33… → floor = -34
-        let result = Decimal64::<2>(-100)
-            .div_round(Decimal64::<2>(300), crate::Round::TowardNegInf);
+        let result = Decimal64::<2>(-100).div_round(Decimal64::<2>(300), crate::Round::Floor);
         assert_eq!(result, Decimal64::<2>(-34));
     }
 
     #[test]
     fn div_round_nearest_even_tie() {
         // 0.05 / 0.10 at scale 2: (5 * 100) / 10 = 50 exactly → already integer, no rounding
-        let result = Decimal64::<2>(5)
-            .div_round(Decimal64::<2>(10), crate::Round::NearestEven);
+        let result = Decimal64::<2>(5).div_round(Decimal64::<2>(10), crate::Round::NearestEven);
         assert_eq!(result, Decimal64::<2>(50));
     }
 
@@ -632,7 +627,9 @@ mod tests {
         // Simple LCG for deterministic pseudo-random values
         let mut seed: u64 = 12345678901234567;
         for _ in 0..1000 {
-            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             // Use 40-bit range: well within f64's 53-bit mantissa at scale 4
             let raw = ((seed >> 24) as i64) - (1i64 << 39);
             let d = Decimal64::<4>::from_raw(raw);

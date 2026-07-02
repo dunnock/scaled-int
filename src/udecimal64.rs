@@ -91,9 +91,9 @@ impl<const S: u32> UDecimal64<S> {
         let rounded = match mode {
             crate::Round::NearestEven => scaled.round_ties_even(),
             crate::Round::Nearest => scaled.round(),
-            crate::Round::TruncateTowardZero => scaled.trunc(),
-            crate::Round::TowardPosInf => scaled.ceil(),
-            crate::Round::TowardNegInf => scaled.floor(),
+            crate::Round::Zero => scaled.trunc(),
+            crate::Round::Ceil => scaled.ceil(),
+            crate::Round::Floor => scaled.floor(),
         };
         // Saturating cast (Rust 1.45+): any f64 >= u64::MAX saturates to u64::MAX.
         let clamped = rounded.clamp(0.0, u64::MAX as f64);
@@ -157,7 +157,8 @@ impl<const S: u32> Mul for UDecimal64<S> {
     type Output = Self;
     #[inline]
     fn mul(self, rhs: Self) -> Self {
-        self.checked_mul(rhs).expect("UDecimal64 multiplication overflow")
+        self.checked_mul(rhs)
+            .expect("UDecimal64 multiplication overflow")
     }
 }
 
@@ -187,19 +188,17 @@ impl<const S: u32> UDecimal64<S> {
     /// Returns `None` on overflow.
     #[inline(always)]
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-        // Fast path: u64 product covers most financial values at S <= 18
-        if let Some(product) = self.0.checked_mul(rhs.0) {
+        // Fast path: u64 product covers most financial values at S <= 5
+        if let Some(product) = self.0.checked_mul(rhs.0)
+            && S <= 7
+        {
             return Some(Self(product / const_pow10_u64(S)));
         }
         // Slow path: full u128 handles large magnitudes
         let product = self.0 as u128 * rhs.0 as u128;
-        let scale   = const_pow10_u64(S) as u128;
-        let result  = product / scale;
-        if result <= u64::MAX as u128 {
-            Some(Self(result as u64))
-        } else {
-            None
-        }
+        let scale = const_pow10_u64(S) as u128;
+        let result = product / scale;
+        Some(Self(result.try_into().ok()?))
     }
 
     /// Returns `None` on division by zero or result overflow.
@@ -214,13 +213,9 @@ impl<const S: u32> UDecimal64<S> {
             return Some(Self(num / rhs.0));
         }
         // Slow path: full u128
-        let num    = self.0 as u128 * scale as u128;
+        let num = self.0 as u128 * scale as u128;
         let result = num / rhs.0 as u128;
-        if result <= u64::MAX as u128 {
-            Some(Self(result as u64))
-        } else {
-            None
-        }
+        Some(Self(result.try_into().ok()?))
     }
 
     /// Clamps to `MAX` on overflow instead of panicking.
@@ -255,11 +250,7 @@ impl<const S: u32> UDecimal64<S> {
         }
         let num = self.0 as u128 * const_pow10_u64(S) as u128;
         let result = div_round_u128(num, rhs.0 as u128, mode);
-        if result <= u64::MAX as u128 {
-            Some(Self(result as u64))
-        } else {
-            None
-        }
+        Some(Self(result.try_into().ok()?))
     }
 
     /// Lossless rescale. Returns `None` if fractional digits would be lost or on overflow.
@@ -308,11 +299,15 @@ fn div_round_u128(num: u128, den: u128, mode: crate::Round) -> u128 {
         return q;
     }
     match mode {
-        crate::Round::TruncateTowardZero => q,
-        crate::Round::TowardPosInf => q + 1,
-        crate::Round::TowardNegInf => q,
+        crate::Round::Zero => q,
+        crate::Round::Ceil => q + 1,
+        crate::Round::Floor => q,
         crate::Round::Nearest => {
-            if r * 2 >= den { q + 1 } else { q }
+            if r * 2 >= den {
+                q + 1
+            } else {
+                q
+            }
         }
         crate::Round::NearestEven => {
             let r2 = r * 2;
@@ -354,9 +349,9 @@ mod tests {
     use super::*;
     use crate::{Decimal64, ParseError, Round};
     #[cfg(not(feature = "std"))]
-    use alloc::string::ToString;
-    #[cfg(not(feature = "std"))]
     use alloc::format;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     // ── Constants ────────────────────────────────────────────────────────────
 
@@ -491,7 +486,10 @@ mod tests {
 
     #[test]
     fn debug_format() {
-        assert_eq!(format!("{:?}", UDecimal64::<4>(12345)), "UDecimal64<4>(12345)");
+        assert_eq!(
+            format!("{:?}", UDecimal64::<4>(12345)),
+            "UDecimal64<4>(12345)"
+        );
     }
 
     // ── f64 conversions ──────────────────────────────────────────────────────
@@ -536,7 +534,9 @@ mod tests {
     fn f64_round_trip() {
         let mut seed: u64 = 12345678901234567;
         for _ in 0..1000 {
-            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             // Use 40-bit range: well within f64's 53-bit mantissa at scale 4
             let raw = seed >> 24;
             let d = UDecimal64::<4>::from_raw(raw);
@@ -628,10 +628,7 @@ mod tests {
 
     #[test]
     fn sub_underflow_returns_none() {
-        assert_eq!(
-            UDecimal64::<2>(50) - UDecimal64::<2>(100),
-            None
-        );
+        assert_eq!(UDecimal64::<2>(50) - UDecimal64::<2>(100), None);
     }
 
     #[test]
@@ -644,10 +641,7 @@ mod tests {
 
     #[test]
     fn checked_sub_underflow_returns_none() {
-        assert_eq!(
-            UDecimal64::<4>(5).checked_sub(UDecimal64::<4>(10)),
-            None
-        );
+        assert_eq!(UDecimal64::<4>(5).checked_sub(UDecimal64::<4>(10)), None);
     }
 
     // ── Multiplication ───────────────────────────────────────────────────────
@@ -663,7 +657,10 @@ mod tests {
 
     #[test]
     fn checked_mul_overflow_returns_none() {
-        assert_eq!(UDecimal64::<4>::MAX.checked_mul(UDecimal64::<4>(20_000)), None);
+        assert_eq!(
+            UDecimal64::<4>::MAX.checked_mul(UDecimal64::<4>(20_000)),
+            None
+        );
     }
 
     #[test]
@@ -711,40 +708,35 @@ mod tests {
     #[test]
     fn div_round_toward_pos_inf() {
         // 1.00 / 3.00: 33.33… → ceil = 34
-        let result = UDecimal64::<2>(100)
-            .div_round(UDecimal64::<2>(300), Round::TowardPosInf);
+        let result = UDecimal64::<2>(100).div_round(UDecimal64::<2>(300), Round::Ceil);
         assert_eq!(result, UDecimal64::<2>(34));
     }
 
     #[test]
     fn div_round_toward_neg_inf() {
         // 1.00 / 3.00: 33.33… → floor = 33 (same as trunc for positives)
-        let result = UDecimal64::<2>(100)
-            .div_round(UDecimal64::<2>(300), Round::TowardNegInf);
+        let result = UDecimal64::<2>(100).div_round(UDecimal64::<2>(300), Round::Floor);
         assert_eq!(result, UDecimal64::<2>(33));
     }
 
     #[test]
     fn div_round_nearest() {
         // 1.00 / 3.00 at scale 2: 33.33… → Nearest = 33
-        let result = UDecimal64::<2>(100)
-            .div_round(UDecimal64::<2>(300), Round::Nearest);
+        let result = UDecimal64::<2>(100).div_round(UDecimal64::<2>(300), Round::Nearest);
         assert_eq!(result, UDecimal64::<2>(33));
     }
 
     #[test]
     fn div_round_nearest_half_up() {
         // 1.00 / 2.00: 50 exactly (no rounding needed)
-        let result = UDecimal64::<2>(100)
-            .div_round(UDecimal64::<2>(200), Round::Nearest);
+        let result = UDecimal64::<2>(100).div_round(UDecimal64::<2>(200), Round::Nearest);
         assert_eq!(result, UDecimal64::<2>(50));
     }
 
     #[test]
     fn div_round_nearest_even_tie() {
         // 3 / 2 at scale 2: (300 * 100) / 200 = 150 exactly
-        let result = UDecimal64::<2>(300)
-            .div_round(UDecimal64::<2>(200), Round::NearestEven);
+        let result = UDecimal64::<2>(300).div_round(UDecimal64::<2>(200), Round::NearestEven);
         assert_eq!(result, UDecimal64::<2>(150));
     }
 
@@ -789,16 +781,14 @@ mod tests {
     #[test]
     fn rescale_round_into_downscale_rounds_up() {
         // 1.25 at scale 2 → scale 1 with Nearest: 1.25 rounds to 1.3 (raw 13)
-        let result: Option<UDecimal64<1>> =
-            UDecimal64::<2>(125).rescale_round_into(Round::Nearest);
+        let result: Option<UDecimal64<1>> = UDecimal64::<2>(125).rescale_round_into(Round::Nearest);
         assert_eq!(result, Some(UDecimal64::<1>(13)));
     }
 
     #[test]
     fn rescale_round_into_downscale_truncates() {
         // 1.23 at scale 2 → scale 1 with TruncateTowardZero: raw 12
-        let result: Option<UDecimal64<1>> =
-            UDecimal64::<2>(123).rescale_round_into(Round::TruncateTowardZero);
+        let result: Option<UDecimal64<1>> = UDecimal64::<2>(123).rescale_round_into(Round::Zero);
         assert_eq!(result, Some(UDecimal64::<1>(12)));
     }
 

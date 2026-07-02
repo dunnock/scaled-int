@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use decimal64::{Decimal64, UDecimal64};
 use std::hint::black_box;
 
@@ -53,7 +53,8 @@ static S_DIV_RHS_U: u64 = DIV_LARGE_RHS as u64;
 /// Pointer is valid and aligned (it's a reference to a static).
 #[inline(always)]
 unsafe fn vload_i64(p: &i64) -> i64 {
-    std::ptr::read_volatile(p)
+    // SAFETY: this is just for test to not cache values
+    unsafe { std::ptr::read_volatile(p) }
 }
 
 /// Load an unsigned value via volatile read to prevent constant-folding.
@@ -62,7 +63,8 @@ unsafe fn vload_i64(p: &i64) -> i64 {
 /// Pointer is valid and aligned (it's a reference to a static).
 #[inline(always)]
 unsafe fn vload_u64(p: &u64) -> u64 {
-    std::ptr::read_volatile(p)
+    // SAFETY: this is just for test to not cache values
+    unsafe { std::ptr::read_volatile(p) }
 }
 
 fn bench_arithmetic(c: &mut Criterion) {

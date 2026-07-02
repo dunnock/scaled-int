@@ -24,19 +24,19 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+pub mod decimal64;
 pub(crate) mod parse;
 pub(crate) mod parse_unsigned;
-pub mod decimal64;
-pub mod udecimal64;
 pub mod scientific;
+pub mod udecimal64;
 pub use decimal64::Decimal64;
-pub use udecimal64::UDecimal64;
 pub use scientific::Scientific;
+pub use udecimal64::UDecimal64;
 
 #[cfg(feature = "serde")]
-pub mod serde_impls;
-#[cfg(feature = "serde")]
 pub mod serde_as;
+#[cfg(feature = "serde")]
+pub mod serde_impls;
 
 /// Rounding mode for `from_f64_round`, `div_round`, and `rescale_round_into`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,11 +46,11 @@ pub enum Round {
     /// Round to nearest, ties go away from zero.
     Nearest,
     /// Truncate toward zero (same as integer division).
-    TruncateTowardZero,
+    Zero,
     /// Round toward positive infinity (ceiling).
-    TowardPosInf,
+    Ceil,
     /// Round toward negative infinity (floor).
-    TowardNegInf,
+    Floor,
 }
 
 /// Errors returned by [`Decimal64::parse`], [`Scientific`], and the
@@ -75,7 +75,11 @@ impl core::fmt::Display for ParseError {
         match self {
             ParseError::Empty => write!(f, "empty or missing digits"),
             ParseError::InvalidChar { byte, pos } => {
-                write!(f, "invalid character {:?} at position {}", *byte as char, pos)
+                write!(
+                    f,
+                    "invalid character {:?} at position {}",
+                    *byte as char, pos
+                )
             }
             ParseError::Overflow => write!(f, "numeric overflow"),
             ParseError::Underflow => {
