@@ -1,6 +1,6 @@
 [package]
 name = "scaledint"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Fast fixed point arithmetic that only uses i64/u64 as internal representation."
 license = "MIT"
@@ -19,6 +19,8 @@ name = "scaledint"
 path = "src/lib.rs"
 
 [dev-dependencies]
+atoi_simd = { version = "0.16.1", default-features = false }
+memchr = { version = "2", default-features = false }
 criterion = "0.8.2"
 rust_decimal = "1.42.0"
 bigdecimal = "0.4.10"

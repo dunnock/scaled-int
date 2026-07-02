@@ -61,8 +61,15 @@ impl<const S: u32> Decimal64<S> {
     /// Parse a decimal string. Extra fractional digits beyond `S` are silently truncated.
     ///
     /// Equivalent to `s.parse::<Decimal64<S>>()`.
+    #[inline]
     pub fn parse(s: &str) -> Result<Self, crate::ParseError> {
-        crate::parse::parse::<S>(s)
+        Self::from_slice(s.as_bytes())
+    }
+
+    /// Parse decimal bytes. Extra fractional digits beyond `S` are silently truncated.
+    #[inline]
+    pub fn from_slice(bytes: &[u8]) -> Result<Self, crate::ParseError> {
+        crate::parse::parse_slice::<S>(bytes)
     }
 }
 
@@ -165,7 +172,7 @@ impl<const S: u32> FromStr for Decimal64<S> {
     type Err = crate::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        crate::parse::parse::<S>(s)
+        Self::from_slice(s.as_bytes())
     }
 }
 

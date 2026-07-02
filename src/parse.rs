@@ -1,7 +1,10 @@
 use crate::{Decimal64, ParseError};
 
 pub(crate) fn parse<const S: u32>(s: &str) -> Result<Decimal64<S>, ParseError> {
-    let bytes = s.as_bytes();
+    parse_slice::<S>(s.as_bytes())
+}
+
+pub(crate) fn parse_slice<const S: u32>(bytes: &[u8]) -> Result<Decimal64<S>, ParseError> {
     if bytes.is_empty() {
         return Err(ParseError::Empty);
     }
@@ -26,7 +29,10 @@ pub(crate) fn parse<const S: u32>(s: &str) -> Result<Decimal64<S>, ParseError> {
     while i < bytes.len() && bytes[i] != b'.' {
         let d = bytes[i].wrapping_sub(b'0');
         if d > 9 {
-            return Err(ParseError::InvalidChar { byte: bytes[i], pos: i });
+            return Err(ParseError::InvalidChar {
+                byte: bytes[i],
+                pos: i,
+            });
         }
         acc = acc
             .checked_mul(10)
@@ -42,7 +48,10 @@ pub(crate) fn parse<const S: u32>(s: &str) -> Result<Decimal64<S>, ParseError> {
         while i < bytes.len() {
             let d = bytes[i].wrapping_sub(b'0');
             if d > 9 {
-                return Err(ParseError::InvalidChar { byte: bytes[i], pos: i });
+                return Err(ParseError::InvalidChar {
+                    byte: bytes[i],
+                    pos: i,
+                });
             }
             has_digits = true;
             if frac_digits < S {
@@ -143,6 +152,12 @@ mod tests {
     }
 
     #[test]
+    fn parse_from_slice() {
+        let d = Decimal64::<4>::from_slice(b"123.4567").unwrap();
+        assert_eq!(d.raw(), 1_234_567);
+    }
+
+    #[test]
     fn round_trip() {
         // LCG for deterministic pseudo-random values; skip i64::MIN (abs overflows i64)
         let mut seed: u64 = 0xdeadbeef_cafebabe;
@@ -157,9 +172,9 @@ mod tests {
             }
             let d = Decimal64::<4>::from_raw(raw);
             let s = d.to_string();
-            let parsed: Decimal64<4> = s.parse().unwrap_or_else(|e| {
-                panic!("round-trip parse failed: raw={raw}, s={s:?}, err={e}")
-            });
+            let parsed: Decimal64<4> = s
+                .parse()
+                .unwrap_or_else(|e| panic!("round-trip parse failed: raw={raw}, s={s:?}, err={e}"));
             assert_eq!(parsed, d, "round-trip mismatch: raw={raw}, s={s:?}");
             count += 1;
         }

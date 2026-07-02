@@ -105,6 +105,7 @@ let d1r = d2.rescale_round_into_nearest::<1>().unwrap();  // 1.3
 
 ```rust
 let d: Decimal64<4> = "123.45678".parse().unwrap();  // stores 123.4567 (truncated)
+let d = Decimal64::<4>::from_slice(b"123.4567").unwrap();
 let d: Decimal64<4> = ".5".parse().unwrap();         // 0.5000
 let d: Decimal64<4> = "5.".parse().unwrap();         // 5.0000
 ```
